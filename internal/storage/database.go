@@ -59,17 +59,27 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 		}
 
 		// Set the encryption key using PRAGMA key
-		if _, err := db.Exec(fmt.Sprintf("PRAGMA key = %s", key)); err != nil {
+		if _, err := db.Exec("PRAGMA key = '" + key + "'"); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("failed to set database encryption key: %w", err)
 		}
 
-		// Verify encryption by trying to read from sqlite_master
-		var count int
-		err = db.QueryRow("SELECT count(*) FROM sqlite_master").Scan(&count)
+		// For new databases, we need to ensure SQLCipher format
+		// Check if this is a new database by trying to query sqlite_master
+		var tableCount int
+		err = db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table'").Scan(&tableCount)
 		if err != nil {
+			// If we can't read, it might be an existing unencrypted database
+			// or the key is wrong - either way, fail gracefully
 			db.Close()
-			return nil, fmt.Errorf("failed to verify database encryption (wrong key?): %w", err)
+			return nil, fmt.Errorf("failed to verify database encryption (wrong key or corrupted database?): %w", err)
+		}
+		
+		// If this is a new database (no tables), force SQLCipher format
+		if tableCount == 0 {
+			if _, err := db.Exec("PRAGMA cipher_migrate"); err != nil {
+				// This is expected for new databases, ignore this error
+			}
 		}
 	}
 

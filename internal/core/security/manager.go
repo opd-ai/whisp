@@ -217,10 +217,8 @@ func (m *Manager) GetDatabaseKey() (string, error) {
 	}()
 
 	// Return key as hex string for SQLCipher PRAGMA key
-	return fmt.Sprintf("x'%x'", key), nil
-}
-
-// Cleanup cleans up security resources
+	return fmt.Sprintf("%x", key), nil
+} // Cleanup cleans up security resources
 func (m *Manager) Cleanup() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

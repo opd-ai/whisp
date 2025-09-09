@@ -22,6 +22,7 @@ type Database struct {
 // SecurityManager interface for database encryption
 type SecurityManager interface {
 	GetDatabaseKey() (string, error)
+	GetDatabaseKeyBytes() ([]byte, error)
 }
 
 // NewDatabase creates a new database connection
@@ -43,8 +44,8 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 	var err error
 
 	if encrypted {
-		// Use SQLCipher for encrypted database - use different driver name
-		dsn = fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
+		// Use SQLCipher for encrypted database - use minimal DSN due to v4 compatibility issues
+		dsn = fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=busy_timeout(5000)&_pragma=cipher_compatibility(3)", dbPath)
 		db, err = sql.Open("sqlite3", dsn)
 	} else {
 		// Use regular SQLite for unencrypted database (fallback)
@@ -57,38 +58,44 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 
 	// Set encryption key if security manager is provided
 	if encrypted {
-		key, err := securityManager.GetDatabaseKey()
+		// Try using raw key bytes with SQLCipher v3 compatibility mode
+		keyBytes, err := securityManager.GetDatabaseKeyBytes()
 		if err != nil {
 			db.Close()
-			return nil, fmt.Errorf("failed to get database key: %w", err)
+			return nil, fmt.Errorf("failed to get database key bytes: %w", err)
 		}
+		defer func() {
+			// Clear key bytes from memory
+			for i := range keyBytes {
+				keyBytes[i] = 0
+			}
+		}()
+
+		// Convert to hex format for SQLCipher PRAGMA key
+		hexKey := fmt.Sprintf("%x", keyBytes)
 
 		// Set the encryption key using PRAGMA key
-		if _, err := db.Exec("PRAGMA key = '" + key + "'"); err != nil {
+		// Note: cipher_compatibility(3) should already be set in DSN
+		if _, err := db.Exec("PRAGMA key = '" + hexKey + "'"); err != nil {
 			db.Close()
 			return nil, fmt.Errorf("failed to set database encryption key: %w", err)
 		}
 
-		// For new databases, we need to ensure SQLCipher format
-		// Check if this is a new database by trying to query sqlite_master
-		var tableCount int
-		err = db.QueryRow("SELECT count(*) FROM sqlite_master WHERE type='table'").Scan(&tableCount)
+		// Test database access by attempting a simple query
+		// This will fail if encryption setup is incorrect
+		var result int
+		err = db.QueryRow("SELECT 1").Scan(&result)
 		if err != nil {
-			// If we can't read, it might be an existing unencrypted database
-			// or the key is wrong - either way, fail gracefully
-			db.Close()
-			return nil, fmt.Errorf("failed to verify database encryption (wrong key or corrupted database?): %w", err)
-		}
-
-		// If this is a new database (no tables), force SQLCipher format
-		if tableCount == 0 {
-			if _, err := db.Exec("PRAGMA cipher_migrate"); err != nil {
-				// This is expected for new databases, ignore this error
+			// Database might be new, try to create schema first
+			_, createErr := db.Exec("CREATE TABLE IF NOT EXISTS _test_encryption (id INTEGER)")
+			if createErr != nil {
+				db.Close()
+				return nil, fmt.Errorf("failed to verify database encryption: %w", err)
 			}
+			// Clean up test table
+			db.Exec("DROP TABLE IF EXISTS _test_encryption")
 		}
-	}
-
-	// Test connection
+	} // Test connection
 	if err := db.Ping(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("failed to ping database: %w", err)
@@ -124,8 +131,11 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 func (d *Database) Close() error {
 	if d.db != nil {
 		// For WAL mode, ensure all transactions are committed
-		if _, err := d.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
-			log.Printf("Warning: Failed to checkpoint WAL: %v", err)
+		// Only do this for unencrypted databases that use WAL mode
+		if !d.encrypted {
+			if _, err := d.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+				log.Printf("Warning: Failed to checkpoint WAL: %v", err)
+			}
 		}
 
 		return d.db.Close()

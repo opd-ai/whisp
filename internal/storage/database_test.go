@@ -16,6 +16,18 @@ func (m *MockSecurityManager) GetDatabaseKey() (string, error) {
 	return m.dbKey, m.err
 }
 
+func (m *MockSecurityManager) GetDatabaseKeyBytes() ([]byte, error) {
+	if m.err != nil {
+		return nil, m.err
+	}
+	// Convert hex string back to bytes for testing
+	if len(m.dbKey) == 0 {
+		return nil, nil
+	}
+	// For testing, just return a fixed 32-byte key
+	return []byte("test-key-32-bytes-for-testing!!!"), nil
+}
+
 func TestNewDatabase(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "test.db")

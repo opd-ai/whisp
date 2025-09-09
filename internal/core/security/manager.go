@@ -218,6 +218,25 @@ func (m *Manager) GetDatabaseKey() (string, error) {
 
 	// Return key as hex string for SQLCipher PRAGMA key
 	return fmt.Sprintf("%x", key), nil
+}
+
+// GetDatabaseKeyBytes derives a database encryption key as raw bytes
+func (m *Manager) GetDatabaseKeyBytes() ([]byte, error) {
+	key, err := m.DeriveContextKey("database")
+	if err != nil {
+		return nil, err
+	}
+
+	// Return a copy of the key bytes
+	result := make([]byte, len(key))
+	copy(result, key)
+
+	// Clear original key from memory
+	for i := range key {
+		key[i] = 0
+	}
+
+	return result, nil
 } // Cleanup cleans up security resources
 func (m *Manager) Cleanup() {
 	m.mu.Lock()

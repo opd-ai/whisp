@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"fyne.io/fyne/v2/test"
+	"github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
 )
@@ -31,6 +32,10 @@ func (m *MockCoreApp) GetMessages() *message.Manager {
 }
 
 func (m *MockCoreApp) GetContacts() *contact.Manager {
+	return nil // Simple mock
+}
+
+func (m *MockCoreApp) GetConfigManager() *config.Manager {
 	return nil // Simple mock
 }
 

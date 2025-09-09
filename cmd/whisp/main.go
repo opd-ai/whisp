@@ -11,11 +11,7 @@ import (
 	"runtime"
 	"syscall"
 
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-
-	"github.com/opd-ai/whisp/internal/core/app"
-	"github.com/opd-ai/whisp/internal/storage"
+	"github.com/opd-ai/whisp/internal/core"
 	"github.com/opd-ai/whisp/platform/common"
 	"github.com/opd-ai/whisp/ui/adaptive"
 )
@@ -29,14 +25,15 @@ var (
 func main() {
 	// Parse command line flags
 	var (
-		debug      = flag.Bool("debug", false, "Enable debug logging")
-		dataDir    = flag.String("data-dir", "", "Custom data directory")
-		configPath = flag.String("config", "", "Custom config file path")
-		version    = flag.Bool("version", false, "Show version information")
+		debug       = flag.Bool("debug", false, "Enable debug logging")
+		dataDir     = flag.String("data-dir", "", "Custom data directory")
+		configPath  = flag.String("config", "", "Custom config file path")
+		showVersion = flag.Bool("version", false, "Show version information")
+		headless    = flag.Bool("headless", false, "Run in headless mode (no GUI)")
 	)
 	flag.Parse()
 
-	if *version {
+	if *showVersion {
 		fmt.Printf("Whisp %s (built %s, commit %s)\n", version, buildTime, gitCommit)
 		fmt.Printf("Platform: %s/%s\n", runtime.GOOS, runtime.GOARCH)
 		os.Exit(0)
@@ -60,14 +57,6 @@ func main() {
 		log.Fatal("Failed to create data directory:", err)
 	}
 
-	// Initialize storage
-	dbPath := filepath.Join(*dataDir, "whisp.db")
-	db, err := storage.NewDatabase(dbPath)
-	if err != nil {
-		log.Fatal("Failed to initialize database:", err)
-	}
-	defer db.Close()
-
 	// Initialize application core
 	coreApp, err := core.NewApp(&core.Config{
 		DataDir:    *dataDir,
@@ -80,21 +69,6 @@ func main() {
 	}
 	defer coreApp.Cleanup()
 
-	// Create Fyne application
-	fyneApp := app.NewWithID("com.opd-ai.whisp")
-	fyneApp.SetMetadata(&fyne.AppMetadata{
-		ID:      "com.opd-ai.whisp",
-		Name:    "Whisp",
-		Version: version,
-		Icon:    resourceIconPng,
-	})
-
-	// Initialize adaptive UI
-	ui, err := adaptive.NewUI(fyneApp, coreApp, platform)
-	if err != nil {
-		log.Fatal("Failed to initialize UI:", err)
-	}
-
 	// Set up graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -106,18 +80,24 @@ func main() {
 		<-sigChan
 		log.Println("Shutting down gracefully...")
 		cancel()
-		fyneApp.Quit()
 	}()
 
 	// Start application
 	log.Printf("Starting Whisp %s on %s", version, platform)
 	
-	// Platform-specific initialization
-	if err := ui.Initialize(ctx); err != nil {
-		log.Fatal("Failed to initialize UI:", err)
+	if err := coreApp.Start(ctx); err != nil {
+		log.Fatal("Failed to start application:", err)
 	}
 
-	// Show main window and run
-	ui.ShowMainWindow()
-	fyneApp.Run()
+	if *headless {
+		// Headless mode - just run the core
+		log.Println("Running in headless mode...")
+		<-ctx.Done()
+	} else {
+		// GUI mode - start UI (placeholder for now)
+		log.Println("GUI mode not yet implemented, running headless...")
+		<-ctx.Done()
+	}
+	
+	log.Println("Application stopped")
 }

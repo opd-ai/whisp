@@ -1,0 +1,146 @@
+# Default configuration for Whisp
+# Copy to ~/.config/whisp/config.yaml and modify as needed
+
+# Network settings
+network:
+  # Bootstrap nodes for initial connection to Tox network
+  bootstrap_nodes:
+    - address: "node.tox.biribiri.org"
+      port: 33445
+      public_key: "F404ABAA1C99A9D37D61AB54898F56793E1DEF8BD46B1038B9D822E8460FAB67"
+    - address: "tox.initramfs.io"
+      port: 33445
+      public_key: "3F0A45A268367C1BEA652F258C85F4A66DA76BCAA667A49E770BCC4917AB6A25"
+    - address: "tox.kurnevsky.net"
+      port: 33445
+      public_key: "82EF82BA33445A1F91A7DB27189ECFC0C013E06E3DA71F588ED692BED625EC23"
+  
+  # Protocol settings
+  enable_ipv6: true
+  enable_udp: true
+  enable_tcp: true
+  enable_local_discovery: true
+  enable_hole_punching: true
+  
+  # Proxy settings (optional)
+  proxy:
+    type: "none"  # Options: none, socks5, http
+    address: ""
+    port: 0
+    username: ""
+    password: ""
+
+# Storage settings
+storage:
+  # Data directory (relative to user data dir if not absolute)
+  data_dir: ""  # Empty = use platform default
+  
+  # Database encryption
+  enable_encryption: true
+  
+  # File transfer settings
+  max_file_size: 2147483648  # 2GB in bytes
+  download_dir: "Downloads"  # Relative to user downloads dir
+  
+  # Message history
+  max_message_history_days: 365
+  auto_delete_media_days: 30
+
+# User interface settings
+ui:
+  # Theme options: system, light, dark, amoled, custom
+  theme: "system"
+  
+  # Language code (ISO 639-1)
+  language: "en"
+  
+  # Font settings
+  font_family: ""  # Empty = use system default
+  font_size: "medium"  # Options: small, medium, large, extra_large
+  
+  # Animation and effects
+  enable_animations: true
+  enable_sound_effects: true
+  
+  # Window settings (desktop only)
+  window:
+    remember_size: true
+    remember_position: true
+    minimize_to_tray: true
+    start_minimized: false
+  
+  # Mobile-specific settings
+  mobile:
+    vibrate_on_message: true
+    show_message_preview: true
+
+# Privacy and security settings
+privacy:
+  # Message settings
+  save_message_history: true
+  enable_disappearing_messages: false
+  default_disappearing_timer: "24h"  # Options: 1h, 24h, 7d, 30d
+  
+  # Status and presence
+  show_typing_indicators: true
+  send_typing_indicators: true
+  show_read_receipts: true
+  send_read_receipts: true
+  show_last_seen: true
+  
+  # File sharing
+  auto_accept_files: false
+  auto_download_limit: 10485760  # 10MB in bytes
+  
+  # Screenshot protection (mobile)
+  prevent_screenshots: false
+  
+  # Contact settings
+  auto_accept_friend_requests: false
+  require_friend_requests_message: true
+
+# Notification settings
+notifications:
+  # Enable notifications
+  enabled: true
+  
+  # Desktop notifications
+  desktop:
+    show_preview: true
+    play_sound: true
+    show_sender: true
+  
+  # Mobile notifications
+  mobile:
+    show_on_lock_screen: true
+    show_preview: true
+    vibrate: true
+    led_color: "#0066CC"
+  
+  # Do not disturb
+  quiet_hours:
+    enabled: false
+    start_time: "22:00"
+    end_time: "08:00"
+
+# Advanced settings
+advanced:
+  # Logging
+  log_level: "info"  # Options: debug, info, warn, error
+  log_to_file: false
+  max_log_size: 10485760  # 10MB
+  
+  # Performance
+  max_concurrent_downloads: 3
+  max_concurrent_uploads: 3
+  message_cache_size: 1000
+  
+  # Development/debugging
+  enable_debug_mode: false
+  show_internal_ids: false
+  
+  # Experimental features
+  experimental:
+    enable_voice_calls: false
+    enable_video_calls: false
+    enable_group_chats: false

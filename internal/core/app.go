@@ -8,6 +8,8 @@ import (
 	"sync"
 	"time"
 
+	"fyne.io/fyne/v2"
+	fyneapp "fyne.io/fyne/v2/app"
 	"github.com/opd-ai/toxcore"
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
@@ -224,4 +226,42 @@ func (a *App) setupToxCallbacks() error {
 	})
 
 	return nil
+}
+
+// StartGUI starts the GUI interface
+func (a *App) StartGUI(ctx context.Context) error {
+	fyne := getApp()
+	if fyne == nil {
+		return fmt.Errorf("failed to create GUI application")
+	}
+
+	// Create main window
+	window := fyne.NewWindow("Whisp Messenger")
+	window.Resize(fyne.NewSize(800, 600))
+
+	// Create UI components
+	ui, err := adaptive.NewUI(fyne, a, adaptive.DetectPlatform())
+	if err != nil {
+		return fmt.Errorf("failed to create UI: %w", err)
+	}
+
+	// Initialize UI
+	if err := ui.Initialize(ctx); err != nil {
+		return fmt.Errorf("failed to initialize UI: %w", err)
+	}
+
+	// Create content
+	content := ui.CreateMainContent()
+	window.SetContent(content)
+
+	// Show window and run
+	window.ShowAndRun()
+	return nil
+}
+
+// getApp creates or gets the Fyne app instance
+func getApp() fyne.App {
+	app := fyneapp.New()
+	app.SetIcon(fyne.NewStaticResource("icon", []byte{})) // Empty icon for now
+	return app
 }

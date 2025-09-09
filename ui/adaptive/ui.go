@@ -52,6 +52,39 @@ func (ui *UI) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to start core app: %w", err)
 	}
 
+	// Create UI components
+	ui.chatView = shared.NewChatView(ui.coreApp)
+	ui.contactList = shared.NewContactList(ui.coreApp)
+
+	return nil
+}
+
+// CreateMainContent creates the main content for the window
+func (ui *UI) CreateMainContent() fyne.CanvasObject {
+	// Create menu bar
+	ui.createMenuBar()
+
+	if ui.platform.IsMobile() {
+		return ui.createMobileLayout()
+	} else {
+		return ui.createDesktopLayout()
+	}
+}
+
+// createMobileLayout creates the mobile layout
+func (ui *UI) createMobileLayout() fyne.CanvasObject {
+	// Mobile layout with tabs
+	tabs := container.NewAppTabs(
+		container.NewTabItem("Chats", ui.contactList.Container()),
+		container.NewTabItem("Messages", ui.chatView.Container()),
+	)
+
+	return tabs
+}
+	if err := ui.coreApp.Start(ctx); err != nil {
+		return fmt.Errorf("failed to start core app: %w", err)
+	}
+
 	// Initialize UI components with core app integration
 	ui.chatView = shared.NewChatView(ui.coreApp)
 	ui.contactList = shared.NewContactList(ui.coreApp)
@@ -80,7 +113,7 @@ func (ui *UI) ShowMainWindow() {
 }
 
 // createDesktopLayout creates the desktop layout
-func (ui *UI) createDesktopLayout() {
+func (ui *UI) createDesktopLayout() fyne.CanvasObject {
 	// Create main content
 	content := container.NewHSplit(
 		ui.contactList.Container(),
@@ -91,14 +124,14 @@ func (ui *UI) createDesktopLayout() {
 	// Create menu bar
 	menuBar := ui.createMenuBar()
 
-	// Set content
-	ui.mainWindow.SetContent(container.NewBorder(
+	// Return the content layout
+	return container.NewBorder(
 		menuBar, // top
 		nil,     // bottom
 		nil,     // left
 		nil,     // right
 		content, // center
-	))
+	)
 }
 
 // createMobileLayout creates the mobile layout

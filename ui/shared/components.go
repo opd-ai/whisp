@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
 )
@@ -19,6 +20,7 @@ type CoreApp interface {
 	GetToxID() string
 	GetMessages() *message.Manager
 	GetContacts() *contact.Manager
+	GetConfigManager() *config.Manager
 }
 
 // ChatView represents the chat interface

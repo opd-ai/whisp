@@ -8,6 +8,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/ui/shared"
@@ -30,6 +31,7 @@ type CoreApp interface {
 	GetToxID() string
 	GetContacts() *contact.Manager
 	GetMessages() *message.Manager
+	GetConfigManager() *config.Manager
 	SendMessageFromUI(friendID uint32, content string) error
 	AddContactFromUI(toxID, message string) error
 }
@@ -153,7 +155,9 @@ func (ui *UI) createMenuBar() *fyne.Container {
 	// File menu
 	fileMenu := fyne.NewMenu("File",
 		fyne.NewMenuItem("Settings", func() {
-			// TODO: Show settings dialog
+			configMgr := ui.coreApp.GetConfigManager()
+			settingsDialog := shared.NewSettingsDialog(configMgr, ui.mainWindow)
+			settingsDialog.Show()
 		}),
 		fyne.NewMenuItemSeparator(),
 		fyne.NewMenuItem("Quit", func() {

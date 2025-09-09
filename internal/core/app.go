@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/opd-ai/toxcore"
+	configpkg "github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/internal/core/security"
@@ -27,12 +28,13 @@ type Config struct {
 
 // App represents the core application logic
 type App struct {
-	config   *Config
-	tox      *tox.Manager
-	storage  *storage.Database
-	contacts *contact.Manager
-	messages *message.Manager
-	security *security.Manager
+	config    *Config
+	configMgr *configpkg.Manager
+	tox       *tox.Manager
+	storage   *storage.Database
+	contacts  *contact.Manager
+	messages  *message.Manager
+	security  *security.Manager
 
 	mu       sync.RWMutex
 	running  bool
@@ -41,6 +43,12 @@ type App struct {
 
 // NewApp creates a new application instance
 func NewApp(config *Config) (*App, error) {
+	// Initialize configuration manager
+	configMgr, err := configpkg.NewManager(config.ConfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize configuration: %w", err)
+	}
+
 	// Initialize database
 	dbPath := filepath.Join(config.DataDir, "whisp.db")
 	db, err := storage.NewDatabase(dbPath)
@@ -73,13 +81,14 @@ func NewApp(config *Config) (*App, error) {
 	messageMgr := message.NewManager(db, toxMgr, contactMgr)
 
 	app := &App{
-		config:   config,
-		tox:      toxMgr,
-		storage:  db,
-		contacts: contactMgr,
-		messages: messageMgr,
-		security: securityMgr,
-		shutdown: make(chan struct{}),
+		config:    config,
+		configMgr: configMgr,
+		tox:       toxMgr,
+		storage:   db,
+		contacts:  contactMgr,
+		messages:  messageMgr,
+		security:  securityMgr,
+		shutdown:  make(chan struct{}),
 	}
 
 	// Set up Tox callbacks
@@ -172,6 +181,11 @@ func (a *App) GetMessages() *message.Manager {
 // GetSecurity returns the security manager
 func (a *App) GetSecurity() *security.Manager {
 	return a.security
+}
+
+// GetConfigManager returns the configuration manager
+func (a *App) GetConfigManager() *configpkg.Manager {
+	return a.configMgr
 }
 
 // SendMessageFromUI sends a message from the UI

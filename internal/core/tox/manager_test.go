@@ -280,7 +280,7 @@ func TestManager_SaveFileHandling(t *testing.T) {
 // TestManager_LoadSavedataErrors tests loadSavedata error conditions
 func TestManager_LoadSavedataErrors(t *testing.T) {
 	tempDir := t.TempDir()
-	
+
 	manager := &Manager{
 		saveFile: filepath.Join(tempDir, "nonexistent.save"),
 	}

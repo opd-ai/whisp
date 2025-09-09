@@ -3,6 +3,7 @@ package tox
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -24,10 +25,10 @@ type Manager struct {
 	saveFile string
 
 	// Event callbacks
-	onFriendRequest func([32]byte, string)
-	onFriendMessage func(uint32, string)
-	onFriendStatus  func(uint32, toxcore.FriendStatus)
-	onFriendName    func(uint32, string)
+	onFriendRequest       func([32]byte, string)
+	onFriendMessage       func(uint32, string)
+	onFriendStatus        func(uint32, toxcore.FriendStatus)
+	onFriendName          func(uint32, string)
 }
 
 // NewManager creates a new Tox manager
@@ -89,9 +90,64 @@ func (m *Manager) initializeTox() error {
 
 // loadSavedata loads savedata from file
 func (m *Manager) loadSavedata() ([]byte, error) {
-	// Implementation will read from saveFile
-	// For now return empty to create new profile
-	return nil, fmt.Errorf("no savedata")
+	if _, err := os.Stat(m.saveFile); os.IsNotExist(err) {
+		return nil, fmt.Errorf("no savedata file")
+	}
+	
+	data, err := os.ReadFile(m.saveFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read savedata: %w", err)
+	}
+	
+	if len(data) == 0 {
+		return nil, fmt.Errorf("empty savedata file")
+	}
+	
+	return data, nil
+}
+
+// Start starts the Tox manager
+func (m *Manager) Start() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if m.running {
+		return fmt.Errorf("Tox manager already running")
+	}
+
+	m.running = true
+	log.Println("Tox manager started")
+	return nil
+}
+
+// Stop stops the Tox manager
+func (m *Manager) Stop() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if !m.running {
+		return nil
+	}
+
+	m.running = false
+	log.Println("Tox manager stopped")
+	return nil
+}
+
+// Cleanup cleans up resources
+func (m *Manager) Cleanup() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	
+	// Save state before cleanup
+	if m.tox != nil {
+		if err := m.save(); err != nil {
+			log.Printf("Warning: Failed to save state during cleanup: %v", err)
+		}
+		m.tox.Kill()
+		m.tox = nil
+	}
+	log.Println("Tox manager cleanup")
 }
 
 // setupCallbacks sets up Tox event callbacks
@@ -151,46 +207,6 @@ func (m *Manager) bootstrap() error {
 	return lastErr
 }
 
-// Start starts the Tox manager
-func (m *Manager) Start() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if m.running {
-		return fmt.Errorf("Tox manager already running")
-	}
-
-	m.running = true
-	log.Println("Tox manager started")
-	return nil
-}
-
-// Stop stops the Tox manager
-func (m *Manager) Stop() error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if !m.running {
-		return nil
-	}
-
-	m.running = false
-	log.Println("Tox manager stopped")
-	return nil
-}
-
-// Cleanup cleans up resources
-func (m *Manager) Cleanup() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	
-	if m.tox != nil {
-		m.tox.Kill()
-		m.tox = nil
-	}
-	log.Println("Tox manager cleanup")
-}
-
 // Iterate performs one Tox iteration
 func (m *Manager) Iterate() {
 	m.mu.RLock()
@@ -207,9 +223,16 @@ func (m *Manager) GetToxID() string {
 	defer m.mu.RUnlock()
 
 	if m.tox == nil {
-		return "PLACEHOLDER_TOX_ID_NOT_INITIALIZED"
+		return ""
 	}
-	return m.tox.SelfGetAddress()
+	
+	toxID := m.tox.SelfGetAddress()
+	if toxID == "" {
+		log.Printf("Warning: Tox instance returned empty ID")
+		return ""
+	}
+	
+	return toxID
 }
 
 // SendMessage sends a message to a friend
@@ -378,10 +401,31 @@ func (m *Manager) save() error {
 		return fmt.Errorf("no savedata to save")
 	}
 
-	// TODO: Implement actual file saving
-	// For now just log that we would save
-	log.Printf("Would save %d bytes of Tox state to %s", len(savedata), m.saveFile)
+	// Ensure directory exists
+	if err := os.MkdirAll(filepath.Dir(m.saveFile), 0700); err != nil {
+		return fmt.Errorf("failed to create savedata directory: %w", err)
+	}
+
+	// Write savedata atomically
+	tempFile := m.saveFile + ".tmp"
+	if err := os.WriteFile(tempFile, savedata, 0600); err != nil {
+		return fmt.Errorf("failed to write temporary savedata: %w", err)
+	}
+
+	if err := os.Rename(tempFile, m.saveFile); err != nil {
+		os.Remove(tempFile) // Clean up on failure
+		return fmt.Errorf("failed to move savedata to final location: %w", err)
+	}
+
+	log.Printf("Tox savedata written to %s (%d bytes)", m.saveFile, len(savedata))
 	return nil
+}
+
+// Save saves the Tox state to disk (public method)
+func (m *Manager) Save() error {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.save()
 }
 
 // Event callback setters

@@ -94,9 +94,15 @@ func main() {
 		log.Println("Running in headless mode...")
 		<-ctx.Done()
 	} else {
-		// GUI mode - start UI (placeholder for now)
-		log.Println("GUI mode not yet implemented, running headless...")
-		<-ctx.Done()
+		// GUI mode - start UI
+		log.Println("Starting GUI mode...")
+		if err := coreApp.StartGUI(ctx); err != nil {
+			log.Printf("Failed to start GUI: %v", err)
+			log.Println("Falling back to headless mode...")
+			<-ctx.Done()
+		} else {
+			<-ctx.Done()
+		}
 	}
 	
 	log.Println("Application stopped")

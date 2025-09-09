@@ -8,6 +8,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
 
+	"github.com/opd-ai/whisp/internal/core/contact"
+	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/ui/shared"
 )
 
@@ -26,8 +28,10 @@ type UI struct {
 type CoreApp interface {
 	Start(ctx context.Context) error
 	GetToxID() string
-	GetContacts() interface{}
-	GetMessages() interface{}
+	GetContacts() *contact.Manager  
+	GetMessages() *message.Manager  
+	SendMessageFromUI(friendID uint32, content string) error
+	AddContactFromUI(toxID, message string) error
 }
 
 // NewUI creates a new adaptive UI
@@ -48,9 +52,14 @@ func (ui *UI) Initialize(ctx context.Context) error {
 		return fmt.Errorf("failed to start core app: %w", err)
 	}
 
-	// Initialize UI components
-	ui.chatView = shared.NewChatView()
-	ui.contactList = shared.NewContactList()
+	// Initialize UI components with core app integration
+	ui.chatView = shared.NewChatView(ui.coreApp)
+	ui.contactList = shared.NewContactList(ui.coreApp)
+
+	// Set up contact selection callback
+	ui.contactList.SetOnContactSelect(func(friendID uint32) {
+		ui.chatView.SetCurrentFriend(friendID)
+	})
 
 	return nil
 }

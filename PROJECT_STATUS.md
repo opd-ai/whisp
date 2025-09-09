@@ -97,8 +97,8 @@ make package       # Platform packages
 
 #### Priority 1: Database Integration
 - [x] **Add real Tox library**: ✅ `github.com/opd-ai/toxcore` fully integrated
-- [ ] **Complete database encryption**: Integrate SQLCipher with security manager
-- [ ] **Implement message persistence**: Complete database operations for messages
+- [ ] **Complete database encryption**: ✅ **COMPLETED** - SQLCipher fully integrated with security manager
+- [ ] **Implement message persistence**: Complete database operations for message storage and retrieval
 - [ ] **Add supporting libraries**: UUID generation, additional encryption libraries
 
 #### Priority 2: Basic GUI Implementation

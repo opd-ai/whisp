@@ -94,7 +94,7 @@ func (ui *UI) createMobileLayout() fyne.CanvasObject {
 // ShowMainWindow shows the main application window
 func (ui *UI) ShowMainWindow() {
 	ui.mainWindow = ui.app.NewWindow("Whisp")
-	
+
 	// Load window state from configuration
 	ui.loadWindowState()
 
@@ -215,9 +215,11 @@ func (ui *UI) createMenuBar() *fyne.Container {
 		addFriendItem.Shortcut = &desktop.CustomShortcut{KeyName: fyne.KeyN, Modifier: fyne.KeyModifierControl}
 	}
 
-	// Create menu bar
+	// Create menu bar and set it on the main window if available
 	mainMenu := fyne.NewMainMenu(fileMenu, friendsMenu, helpMenu)
-	ui.mainWindow.SetMainMenu(mainMenu)
+	if ui.mainWindow != nil {
+		ui.mainWindow.SetMainMenu(mainMenu)
+	}
 
 	// Return empty container as Fyne handles menu internally
 	return container.NewHBox()
@@ -315,8 +317,12 @@ func (ui *UI) saveWindowState() {
 
 // showToxIDDialog displays a dialog with the user's Tox ID
 func (ui *UI) showToxIDDialog() {
+	if ui.mainWindow == nil {
+		return // Cannot show dialog without main window
+	}
+
 	toxID := ui.coreApp.GetToxID()
-	
+
 	entry := widget.NewEntry()
 	entry.SetText(toxID)
 	entry.Disable()
@@ -338,6 +344,10 @@ func (ui *UI) showToxIDDialog() {
 
 // showAboutDialog displays the about dialog
 func (ui *UI) showAboutDialog() {
+	if ui.mainWindow == nil {
+		return // Cannot show dialog without main window
+	}
+
 	content := container.NewVBox(
 		widget.NewLabel("Whisp"),
 		widget.NewLabel("Secure Cross-Platform Messaging"),

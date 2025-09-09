@@ -221,7 +221,10 @@ func (m *Manager) CancelTransfer(transferID string, toxMgr ToxManager) error {
 	transfer.mu.Lock()
 	defer transfer.mu.Unlock()
 
-	if transfer.IsComplete() {
+	// Check if transfer is already in a terminal state (avoid recursive lock)
+	if transfer.State == TransferStateCompleted ||
+		transfer.State == TransferStateFailed ||
+		transfer.State == TransferStateCancelled {
 		return fmt.Errorf("transfer %s is already complete", transferID)
 	}
 

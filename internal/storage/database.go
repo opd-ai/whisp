@@ -280,6 +280,35 @@ func (d *Database) runMigrations() error {
 			-- For SQLite, we need to use a different approach
 			`,
 		},
+		{
+			version: "add_fts_message_search",
+			sql: `
+			-- Create FTS virtual table for message search optimization
+			CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+				content,
+				content_row='messages',
+				content_rowid='id'
+			);
+			
+			-- Populate FTS table with existing messages
+			INSERT INTO messages_fts(rowid, content) 
+			SELECT id, content FROM messages WHERE is_deleted = 0;
+			
+			-- Create triggers to keep FTS table synchronized with messages table
+			CREATE TRIGGER IF NOT EXISTS messages_fts_insert AFTER INSERT ON messages BEGIN
+				INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+			END;
+			
+			CREATE TRIGGER IF NOT EXISTS messages_fts_update AFTER UPDATE ON messages BEGIN
+				DELETE FROM messages_fts WHERE rowid = old.id;
+				INSERT INTO messages_fts(rowid, content) VALUES (new.id, new.content);
+			END;
+			
+			CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages BEGIN
+				DELETE FROM messages_fts WHERE rowid = old.id;
+			END;
+			`,
+		},
 	}
 
 	// Apply migrations
@@ -299,6 +328,10 @@ func (d *Database) runMigrations() error {
 		if migration.version == "add_uuid_to_messages" {
 			if err := d.migrateAddUUIDToMessages(); err != nil {
 				return fmt.Errorf("failed to apply UUID migration: %w", err)
+			}
+		} else if migration.version == "add_fts_message_search" {
+			if err := d.migrateFTSMessageSearch(); err != nil {
+				return fmt.Errorf("failed to apply FTS migration: %w", err)
 			}
 		} else {
 			// Apply regular migration
@@ -393,6 +426,93 @@ func (d *Database) migrateAddUUIDToMessages() error {
 	}
 
 	return tx.Commit()
+}
+
+// migrateFTSMessageSearch creates the FTS virtual table and associated triggers for optimized message search
+func (d *Database) migrateFTSMessageSearch() error {
+	// First check if FTS5 is available
+	if !d.isFTS5Available() {
+		log.Printf("FTS5 not available, skipping FTS migration")
+		return nil
+	}
+
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start FTS migration transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Create FTS virtual table for message search optimization
+	ftsSchema := `
+	CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+		content,
+		content_row='messages',
+		content_rowid='id'
+	);`
+
+	if _, err := tx.Exec(ftsSchema); err != nil {
+		return fmt.Errorf("failed to create FTS virtual table: %w", err)
+	}
+
+	// Populate FTS table with existing messages
+	populateQuery := `
+	INSERT INTO messages_fts(rowid, content) 
+	SELECT id, content FROM messages WHERE is_deleted = 0 AND content IS NOT NULL AND content != '';`
+
+	if _, err := tx.Exec(populateQuery); err != nil {
+		return fmt.Errorf("failed to populate FTS table: %w", err)
+	}
+
+	// Create triggers to keep FTS table synchronized with messages table
+	insertTrigger := `
+	CREATE TRIGGER IF NOT EXISTS messages_fts_insert AFTER INSERT ON messages
+	WHEN NEW.is_deleted = 0 AND NEW.content IS NOT NULL AND NEW.content != ''
+	BEGIN
+		INSERT INTO messages_fts(rowid, content) VALUES (NEW.id, NEW.content);
+	END;`
+
+	updateTrigger := `
+	CREATE TRIGGER IF NOT EXISTS messages_fts_update AFTER UPDATE ON messages
+	WHEN NEW.content IS NOT NULL AND NEW.content != ''
+	BEGIN
+		DELETE FROM messages_fts WHERE rowid = OLD.id;
+		CASE WHEN NEW.is_deleted = 0 THEN
+			INSERT INTO messages_fts(rowid, content) VALUES (NEW.id, NEW.content);
+		END;
+	END;`
+
+	deleteTrigger := `
+	CREATE TRIGGER IF NOT EXISTS messages_fts_delete AFTER DELETE ON messages BEGIN
+		DELETE FROM messages_fts WHERE rowid = OLD.id;
+	END;`
+
+	for _, trigger := range []string{insertTrigger, updateTrigger, deleteTrigger} {
+		if _, err := tx.Exec(trigger); err != nil {
+			return fmt.Errorf("failed to create FTS trigger: %w", err)
+		}
+	}
+
+	log.Printf("FTS5 message search index created successfully")
+	return tx.Commit()
+}
+
+// isFTS5Available checks if SQLite has FTS5 module available
+func (d *Database) isFTS5Available() bool {
+	// Try to compile a simple FTS5 statement
+	_, err := d.db.Exec(`SELECT 1 FROM pragma_compile_options WHERE compile_options LIKE '%FTS5%'`)
+	if err != nil {
+		return false
+	}
+
+	// Try creating a temporary FTS5 table
+	_, err = d.db.Exec(`CREATE VIRTUAL TABLE IF NOT EXISTS _temp_fts_test USING fts5(content)`)
+	if err != nil {
+		return false
+	}
+
+	// Clean up test table
+	d.db.Exec(`DROP TABLE IF EXISTS _temp_fts_test`)
+	return true
 }
 
 // generateUUID generates a simple UUID string without external dependencies

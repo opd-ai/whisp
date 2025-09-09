@@ -1,7 +1,6 @@
 package tox
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"

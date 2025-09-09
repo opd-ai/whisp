@@ -16,7 +16,7 @@ import (
 
 func main() {
 	// Test core functionality without GUI
-	fmt.Println("=== Whisp Core Implementation Test ===\n")
+	fmt.Println("=== Whisp Core Implementation Test ===")
 	
 	// 1. Platform Detection Test
 	fmt.Print("Testing platform detection... ")

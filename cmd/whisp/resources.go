@@ -1,6 +1,6 @@
 package main
 
-import "fyne.io/fyne/v2/storage/repository"
+import "fyne.io/fyne/v2"
 
 // Embedded application icon
 var resourceIconPng = &fyne.StaticResource{

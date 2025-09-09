@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opd-ai/toxcore"
 	"github.com/opd-ai/whisp/internal/storage"
 )
 
@@ -55,7 +56,7 @@ type Manager struct {
 
 // ToxManager interface for Tox operations
 type ToxManager interface {
-	SendMessage(friendID uint32, message string, messageType interface{}) error
+	SendMessage(friendID uint32, message string, messageType toxcore.MessageType) error
 }
 
 // ContactManager interface for contact operations
@@ -96,12 +97,12 @@ func (m *Manager) SendMessage(friendID uint32, content string, messageType Messa
 	m.mu.Unlock()
 
 	// Convert message type for Tox
-	var toxMsgType interface{}
+	var toxMsgType toxcore.MessageType
 	switch messageType {
 	case MessageTypeAction:
-		toxMsgType = 1 // MessageTypeAction
+		toxMsgType = toxcore.MessageTypeAction
 	default:
-		toxMsgType = 0 // MessageTypeNormal
+		toxMsgType = toxcore.MessageTypeNormal
 	}
 
 	// Send via Tox

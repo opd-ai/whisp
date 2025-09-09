@@ -131,7 +131,7 @@ func (m *Manager) GetAllContacts() []*Contact {
 }
 
 // GetContact returns a contact by friend ID
-func (m *Manager) GetContact(friendID uint32) (*Contact, bool) {
+func (m *Manager) GetContact(friendID uint32) (interface{}, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opd-ai/toxcore"
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/internal/core/security"
@@ -210,14 +211,8 @@ func (a *App) setupToxCallbacks() error {
 		a.messages.HandleIncomingMessage(friendID, msg, message.MessageTypeNormal)
 	})
 
-	// Friend connection status callback
-	a.tox.OnFriendConnectionStatus(func(friendID uint32, status interface{}) {
-		log.Printf("Friend %d connection status: %v", friendID, status)
-		a.contacts.UpdateConnectionStatus(friendID, status)
-	})
-
 	// Friend status callback
-	a.tox.OnFriendStatus(func(friendID uint32, status interface{}) {
+	a.tox.OnFriendStatus(func(friendID uint32, status toxcore.FriendStatus) {
 		log.Printf("Friend %d status: %v", friendID, status)
 		a.contacts.UpdateStatus(friendID, status)
 	})
@@ -226,12 +221,6 @@ func (a *App) setupToxCallbacks() error {
 	a.tox.OnFriendName(func(friendID uint32, name string) {
 		log.Printf("Friend %d name: %s", friendID, name)
 		a.contacts.UpdateName(friendID, name)
-	})
-
-	// Friend status message callback
-	a.tox.OnFriendStatusMessage(func(friendID uint32, statusMessage string) {
-		log.Printf("Friend %d status message: %s", friendID, statusMessage)
-		a.contacts.UpdateStatusMessage(friendID, statusMessage)
 	})
 
 	return nil

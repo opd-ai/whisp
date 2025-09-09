@@ -56,6 +56,11 @@ func (ui *UI) Initialize(ctx context.Context) error {
 	ui.chatView = shared.NewChatView(ui.coreApp)
 	ui.contactList = shared.NewContactList(ui.coreApp)
 
+	// Set up contact selection callback
+	ui.contactList.SetOnContactSelect(func(friendID uint32) {
+		ui.chatView.SetCurrentFriend(friendID)
+	})
+
 	return nil
 }
 
@@ -86,6 +91,13 @@ func (ui *UI) createMobileLayout() fyne.CanvasObject {
 func (ui *UI) ShowMainWindow() {
 	ui.mainWindow = ui.app.NewWindow("Whisp")
 	ui.mainWindow.Resize(fyne.NewSize(1000, 700))
+
+	// Set parent window for contact list dialogs
+	if ui.contactList != nil {
+		ui.contactList.SetParentWindow(ui.mainWindow)
+		// Initial refresh of contacts
+		ui.contactList.RefreshContacts()
+	}
 
 	// Create layout based on platform
 	if ui.platform.IsMobile() {
@@ -152,7 +164,9 @@ func (ui *UI) createMenuBar() *fyne.Container {
 	// Friends menu
 	friendsMenu := fyne.NewMenu("Friends",
 		fyne.NewMenuItem("Add Friend", func() {
-			// TODO: Show add friend dialog
+			if ui.contactList != nil {
+				ui.contactList.ShowAddFriendDialog()
+			}
 		}),
 		fyne.NewMenuItem("Show My Tox ID", func() {
 			toxID := ui.coreApp.GetToxID()

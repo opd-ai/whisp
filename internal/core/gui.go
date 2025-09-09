@@ -6,7 +6,6 @@ import (
 	"log"
 
 	"fyne.io/fyne/v2/app"
-	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/ui/adaptive"
 )
 
@@ -37,24 +36,4 @@ func (a *App) StartGUI(ctx context.Context) error {
 	}()
 
 	return nil
-}
-
-// SendMessageFromUI handles message sending from UI
-func (a *App) SendMessageFromUI(friendID uint32, content string) error {
-	if a.messages == nil {
-		return fmt.Errorf("message manager not initialized")
-	}
-	
-	_, err := a.messages.SendMessage(friendID, content, message.MessageTypeNormal)
-	return err
-}
-
-// AddContactFromUI handles contact addition from UI
-func (a *App) AddContactFromUI(toxID, messageText string) error {
-	if a.contacts == nil {
-		return fmt.Errorf("contact manager not initialized")
-	}
-	
-	_, err := a.contacts.AddContact(toxID, messageText)
-	return err
 }

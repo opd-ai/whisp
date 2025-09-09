@@ -17,6 +17,8 @@ type CoreApp interface {
 	SendMessageFromUI(friendID uint32, content string) error
 	AddContactFromUI(toxID, message string) error
 	GetToxID() string
+	GetMessages() *message.Manager
+	GetContacts() *contact.Manager
 }
 
 // ChatView represents the chat interface
@@ -98,14 +100,17 @@ func (cv *ChatView) sendMessage() {
 			log.Printf("Failed to send message: %v", err)
 			return
 		}
-		
-		// Add message to local display immediately
-		newMsg := &message.Message{
-			Content:    text,
-			IsOutgoing: true,
+
+		// Reload messages from database to get the actual sent message
+		if cv.coreApp.GetMessages() != nil {
+			messages, err := cv.coreApp.GetMessages().GetMessages(cv.currentFriend, 50, 0)
+			if err != nil {
+				log.Printf("Failed to reload messages: %v", err)
+			} else {
+				cv.messageData = messages
+				cv.messages.Refresh()
+			}
 		}
-		cv.messageData = append(cv.messageData, newMsg)
-		cv.messages.Refresh()
 	}
 
 	cv.input.SetText("")
@@ -114,8 +119,20 @@ func (cv *ChatView) sendMessage() {
 // SetCurrentFriend sets the current friend for chat
 func (cv *ChatView) SetCurrentFriend(friendID uint32) {
 	cv.currentFriend = friendID
-	// TODO: Load message history for this friend
-	cv.messageData = []*message.Message{} // Clear for now
+
+	// Load message history for this friend
+	if cv.coreApp != nil && cv.coreApp.GetMessages() != nil {
+		messages, err := cv.coreApp.GetMessages().GetMessages(friendID, 50, 0) // Load last 50 messages
+		if err != nil {
+			log.Printf("Failed to load message history: %v", err)
+			cv.messageData = []*message.Message{} // Clear on error
+		} else {
+			cv.messageData = messages
+		}
+	} else {
+		cv.messageData = []*message.Message{} // Clear if no core app
+	}
+
 	cv.messages.Refresh()
 }
 
@@ -126,11 +143,12 @@ func (cv *ChatView) Container() *fyne.Container {
 
 // ContactList represents the contact list interface
 type ContactList struct {
-	container   *fyne.Container
-	list        *widget.List
-	coreApp     CoreApp
-	contactData []*contact.Contact
-	onSelect    func(uint32) // Callback when contact is selected
+	container    *fyne.Container
+	list         *widget.List
+	coreApp      CoreApp
+	contactData  []*contact.Contact
+	onSelect     func(uint32) // Callback when contact is selected
+	parentWindow fyne.Window  // Reference to parent window for dialogs
 }
 
 // NewContactList creates a new contact list
@@ -140,6 +158,11 @@ func NewContactList(coreApp CoreApp) *ContactList {
 	}
 	cl.initializeComponents()
 	return cl
+}
+
+// SetParentWindow sets the parent window for dialogs
+func (cl *ContactList) SetParentWindow(window fyne.Window) {
+	cl.parentWindow = window
 }
 
 // initializeComponents initializes the contact list components
@@ -183,17 +206,82 @@ func (cl *ContactList) initializeComponents() {
 
 // showAddFriendDialog shows the add friend dialog
 func (cl *ContactList) showAddFriendDialog() {
-	// For now, just log - proper dialog implementation would need window reference
-	log.Println("Add friend dialog requested - placeholder implementation")
-	
-	// TODO: Implement proper dialog when window reference is available
-	// This is a simplified version for the initial implementation
+	if cl.parentWindow == nil {
+		log.Println("No parent window available for add friend dialog")
+		return
+	}
+
+	// Create input fields
+	toxIDEntry := widget.NewEntry()
+	toxIDEntry.SetPlaceHolder("Enter Tox ID...")
+	toxIDEntry.Wrapping = fyne.TextWrapWord
+
+	messageEntry := widget.NewEntry()
+	messageEntry.SetText("Hello! I'd like to add you as a friend.")
+	messageEntry.SetPlaceHolder("Friend request message...")
+	messageEntry.Wrapping = fyne.TextWrapWord
+
+	// Create buttons
+	var dialog *widget.PopUp
+
+	addButton := widget.NewButton("Add Friend", func() {
+		toxID := toxIDEntry.Text
+		message := messageEntry.Text
+
+		if toxID == "" {
+			// Show error - invalid Tox ID
+			cl.showErrorDialog("Please enter a valid Tox ID")
+			return
+		}
+
+		// Try to add the contact
+		if cl.coreApp != nil {
+			if err := cl.coreApp.AddContactFromUI(toxID, message); err != nil {
+				log.Printf("Failed to add contact: %v", err)
+				// Show error dialog
+				cl.showErrorDialog(fmt.Sprintf("Failed to add contact: %v", err))
+			} else {
+				log.Println("Friend request sent successfully")
+				// Refresh contact list
+				cl.RefreshContacts()
+				dialog.Hide()
+			}
+		}
+	})
+
+	cancelButton := widget.NewButton("Cancel", func() {
+		dialog.Hide()
+	})
+
+	// Create dialog content
+	content := container.NewVBox(
+		widget.NewLabel("Add Friend"),
+		widget.NewSeparator(),
+		widget.NewLabel("Tox ID:"),
+		toxIDEntry,
+		widget.NewLabel("Message:"),
+		messageEntry,
+		widget.NewSeparator(),
+		container.NewHBox(
+			cancelButton,
+			addButton,
+		),
+	)
+
+	// Create and show dialog
+	dialog = widget.NewModalPopUp(content, cl.parentWindow.Canvas())
+	dialog.Resize(fyne.NewSize(400, 300))
+	dialog.Show()
 }
 
 // RefreshContacts refreshes the contact list
 func (cl *ContactList) RefreshContacts() {
-	// TODO: Get actual contacts from core app
-	cl.contactData = []*contact.Contact{} // Placeholder
+	if cl.coreApp != nil && cl.coreApp.GetContacts() != nil {
+		contacts := cl.coreApp.GetContacts().GetAllContacts()
+		cl.contactData = contacts
+	} else {
+		cl.contactData = []*contact.Contact{} // Clear if no core app
+	}
 	cl.list.Refresh()
 }
 
@@ -202,7 +290,33 @@ func (cl *ContactList) SetOnContactSelect(callback func(uint32)) {
 	cl.onSelect = callback
 }
 
+// ShowAddFriendDialog shows the add friend dialog (public method)
+func (cl *ContactList) ShowAddFriendDialog() {
+	cl.showAddFriendDialog()
+}
+
 // Container returns the contact list container
 func (cl *ContactList) Container() *fyne.Container {
 	return cl.container
+}
+
+// showErrorDialog shows an error dialog
+func (cl *ContactList) showErrorDialog(message string) {
+	if cl.parentWindow == nil {
+		log.Printf("Error: %s", message)
+		return
+	}
+
+	errorLabel := widget.NewLabel(message)
+	var errorPopup *widget.PopUp
+	errorPopup = widget.NewModalPopUp(
+		container.NewVBox(
+			errorLabel,
+			widget.NewButton("OK", func() {
+				errorPopup.Hide()
+			}),
+		),
+		cl.parentWindow.Canvas(),
+	)
+	errorPopup.Show()
 }

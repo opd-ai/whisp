@@ -174,6 +174,26 @@ func (a *App) GetSecurity() *security.Manager {
 	return a.security
 }
 
+// SendMessageFromUI sends a message from the UI
+func (a *App) SendMessageFromUI(friendID uint32, content string) error {
+	if content == "" {
+		return fmt.Errorf("message content cannot be empty")
+	}
+
+	_, err := a.messages.SendMessage(friendID, content, message.MessageTypeNormal)
+	return err
+}
+
+// AddContactFromUI adds a contact from the UI
+func (a *App) AddContactFromUI(toxID, message string) error {
+	if toxID == "" {
+		return fmt.Errorf("Tox ID cannot be empty")
+	}
+
+	_, err := a.contacts.AddContact(toxID, message)
+	return err
+}
+
 // mainLoop runs the main application loop
 func (a *App) mainLoop(ctx context.Context) {
 	ticker := time.NewTicker(50 * time.Millisecond) // 20 FPS

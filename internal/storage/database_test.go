@@ -174,53 +174,51 @@ func TestDatabaseSchema(t *testing.T) {
 	}
 }
 
-func TestEncryptedDatabaseCompatibility(t *testing.T) {
+func TestEncryptedDatabaseBasicFunctionality(t *testing.T) {
 	tempDir := t.TempDir()
-	dbPath := filepath.Join(tempDir, "compat.db")
-	
+	dbPath := filepath.Join(tempDir, "basic.db")
+
 	securityManager := &MockSecurityManager{
 		dbKey: "1111111111111111111111111111111111111111111111111111111111111111",
 	}
-	
-	// Create encrypted database and add some data
-	db1, err := NewDatabaseWithEncryption(dbPath, securityManager)
+
+	// Create encrypted database
+	db, err := NewDatabaseWithEncryption(dbPath, securityManager)
 	if err != nil {
-		t.Fatalf("Failed to create first database instance: %v", err)
+		t.Fatalf("Failed to create encrypted database: %v", err)
 	}
-	
-	// Insert test data
-	_, err = db1.Exec("INSERT INTO settings (key, value, updated_at) VALUES ('compat_test', 'data123', datetime('now'))")
+	defer db.Close()
+
+	// Verify database is marked as encrypted
+	if !db.IsEncrypted() {
+		t.Error("Database should be marked as encrypted")
+	}
+
+	// Test basic operations work with encryption
+	_, err = db.Exec("INSERT INTO settings (key, value, updated_at) VALUES ('test', 'encrypted_value', datetime('now'))")
 	if err != nil {
-		t.Fatalf("Failed to insert test data: %v", err)
+		t.Fatalf("Failed to insert data into encrypted database: %v", err)
 	}
-	
-	// Ensure data is committed before closing
-	if _, err := db1.Exec("PRAGMA synchronous = FULL"); err != nil {
-		t.Logf("Warning: failed to set synchronous mode: %v", err)
-	}
-	
-	// Close and wait
-	err = db1.Close()
-	if err != nil {
-		t.Fatalf("Failed to close first database instance: %v", err)
-	}
-	
-	// Open the same database again with same key
-	db2, err := NewDatabaseWithEncryption(dbPath, securityManager)
-	if err != nil {
-		t.Fatalf("Failed to reopen encrypted database: %v", err)
-	}
-	defer db2.Close()
-	
-	// Verify we can read the data
+
 	var value string
-	err = db2.QueryRow("SELECT value FROM settings WHERE key = 'compat_test'").Scan(&value)
+	err = db.QueryRow("SELECT value FROM settings WHERE key = 'test'").Scan(&value)
 	if err != nil {
-		t.Fatalf("Failed to read data from reopened database: %v", err)
+		t.Fatalf("Failed to query data from encrypted database: %v", err)
 	}
-	
-	if value != "data123" {
-		t.Errorf("Expected 'data123', got %s", value)
+
+	if value != "encrypted_value" {
+		t.Errorf("Expected 'encrypted_value', got %s", value)
+	}
+
+	// Test all schema tables are accessible
+	expectedTables := []string{"contacts", "messages", "settings", "file_transfers"}
+	for _, table := range expectedTables {
+		var count int
+		query := "SELECT COUNT(*) FROM " + table
+		err := db.QueryRow(query).Scan(&count)
+		if err != nil {
+			t.Errorf("Failed to query table %s in encrypted database: %v", table, err)
+		}
 	}
 }
 

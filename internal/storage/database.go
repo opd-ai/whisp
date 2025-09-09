@@ -74,7 +74,7 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 			db.Close()
 			return nil, fmt.Errorf("failed to verify database encryption (wrong key or corrupted database?): %w", err)
 		}
-		
+
 		// If this is a new database (no tables), force SQLCipher format
 		if tableCount == 0 {
 			if _, err := db.Exec("PRAGMA cipher_migrate"); err != nil {

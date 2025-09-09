@@ -7,27 +7,70 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "modernc.org/sqlite"
+	_ "github.com/mutecomm/go-sqlcipher/v4"
 )
 
-// Database wraps the SQLite database connection
+// Database wraps the SQLite database connection with encryption support
 type Database struct {
-	db   *sql.DB
-	path string
+	db        *sql.DB
+	path      string
+	encrypted bool
+}
+
+// SecurityManager interface for database encryption
+type SecurityManager interface {
+	GetDatabaseKey() (string, error)
 }
 
 // NewDatabase creates a new database connection
 func NewDatabase(dbPath string) (*Database, error) {
+	return NewDatabaseWithEncryption(dbPath, nil)
+}
+
+// NewDatabaseWithEncryption creates a new encrypted database connection
+func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (*Database, error) {
 	// Ensure directory exists
 	if err := ensureDir(filepath.Dir(dbPath)); err != nil {
 		return nil, fmt.Errorf("failed to create database directory: %w", err)
 	}
 
-	// Open database with SQLite encryption support
-	dsn := fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", dbPath)
-	db, err := sql.Open("sqlite", dsn)
+	var dsn string
+	encrypted := securityManager != nil
+
+	if encrypted {
+		// Use SQLCipher for encrypted database
+		dsn = fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", dbPath)
+	} else {
+		// Use regular SQLite for unencrypted database (fallback)
+		dsn = fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", dbPath)
+	}
+
+	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
+	}
+
+	// Set encryption key if security manager is provided
+	if encrypted {
+		key, err := securityManager.GetDatabaseKey()
+		if err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to get database key: %w", err)
+		}
+
+		// Set the encryption key using PRAGMA key
+		if _, err := db.Exec(fmt.Sprintf("PRAGMA key = %s", key)); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to set database encryption key: %w", err)
+		}
+
+		// Verify encryption by trying to read from sqlite_master
+		var count int
+		err = db.QueryRow("SELECT count(*) FROM sqlite_master").Scan(&count)
+		if err != nil {
+			db.Close()
+			return nil, fmt.Errorf("failed to verify database encryption (wrong key?): %w", err)
+		}
 	}
 
 	// Test connection
@@ -37,8 +80,9 @@ func NewDatabase(dbPath string) (*Database, error) {
 	}
 
 	storage := &Database{
-		db:   db,
-		path: dbPath,
+		db:        db,
+		path:      dbPath,
+		encrypted: encrypted,
 	}
 
 	// Initialize schema
@@ -47,7 +91,11 @@ func NewDatabase(dbPath string) (*Database, error) {
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
-	log.Printf("Database initialized at %s", dbPath)
+	encryptionStatus := "unencrypted"
+	if encrypted {
+		encryptionStatus = "encrypted"
+	}
+	log.Printf("Database initialized at %s (%s)", dbPath, encryptionStatus)
 	return storage, nil
 }
 
@@ -57,6 +105,16 @@ func (d *Database) Close() error {
 		return d.db.Close()
 	}
 	return nil
+}
+
+// IsEncrypted returns whether the database is encrypted
+func (d *Database) IsEncrypted() bool {
+	return d.encrypted
+}
+
+// GetPath returns the database file path
+func (d *Database) GetPath() string {
+	return d.path
 }
 
 // Query executes a query that returns rows

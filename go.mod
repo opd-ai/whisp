@@ -1,6 +1,6 @@
 module github.com/opd-ai/whisp
 
-go 1.23.2
+go 1.24.0
 
 toolchain go1.24.5
 
@@ -8,7 +8,7 @@ require (
 	fyne.io/fyne/v2 v2.4.5
 	github.com/google/uuid v1.6.0
 	github.com/opd-ai/toxcore v0.0.0-20250909004412-10e1d939a103
-	golang.org/x/crypto v0.36.0
+	golang.org/x/crypto v0.42.0
 	modernc.org/sqlite v1.29.5
 )
 
@@ -31,6 +31,7 @@ require (
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
+	github.com/mutecomm/go-sqlcipher/v4 v4.4.2 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
@@ -42,9 +43,9 @@ require (
 	github.com/yuin/goldmark v1.5.5 // indirect
 	golang.org/x/image v0.11.0 // indirect
 	golang.org/x/mobile v0.0.0-20230531173138-3c911d8e3eda // indirect
-	golang.org/x/net v0.21.0 // indirect
-	golang.org/x/sys v0.31.0 // indirect
-	golang.org/x/text v0.23.0 // indirect
+	golang.org/x/net v0.43.0 // indirect
+	golang.org/x/sys v0.36.0 // indirect
+	golang.org/x/text v0.29.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	honnef.co/go/js/dom v0.0.0-20210725211120-f030747120f2 // indirect
 	modernc.org/gc/v3 v3.0.0-20240107210532-573471604cb6 // indirect

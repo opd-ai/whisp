@@ -177,39 +177,48 @@ func TestDatabaseSchema(t *testing.T) {
 func TestEncryptedDatabaseCompatibility(t *testing.T) {
 	tempDir := t.TempDir()
 	dbPath := filepath.Join(tempDir, "compat.db")
-
+	
 	securityManager := &MockSecurityManager{
 		dbKey: "1111111111111111111111111111111111111111111111111111111111111111",
 	}
-
+	
 	// Create encrypted database and add some data
 	db1, err := NewDatabaseWithEncryption(dbPath, securityManager)
 	if err != nil {
 		t.Fatalf("Failed to create first database instance: %v", err)
 	}
-
+	
 	// Insert test data
 	_, err = db1.Exec("INSERT INTO settings (key, value, updated_at) VALUES ('compat_test', 'data123', datetime('now'))")
 	if err != nil {
 		t.Fatalf("Failed to insert test data: %v", err)
 	}
-
-	db1.Close()
-
+	
+	// Ensure data is committed before closing
+	if _, err := db1.Exec("PRAGMA synchronous = FULL"); err != nil {
+		t.Logf("Warning: failed to set synchronous mode: %v", err)
+	}
+	
+	// Close and wait
+	err = db1.Close()
+	if err != nil {
+		t.Fatalf("Failed to close first database instance: %v", err)
+	}
+	
 	// Open the same database again with same key
 	db2, err := NewDatabaseWithEncryption(dbPath, securityManager)
 	if err != nil {
 		t.Fatalf("Failed to reopen encrypted database: %v", err)
 	}
 	defer db2.Close()
-
+	
 	// Verify we can read the data
 	var value string
 	err = db2.QueryRow("SELECT value FROM settings WHERE key = 'compat_test'").Scan(&value)
 	if err != nil {
 		t.Fatalf("Failed to read data from reopened database: %v", err)
 	}
-
+	
 	if value != "data123" {
 		t.Errorf("Expected 'data123', got %s", value)
 	}

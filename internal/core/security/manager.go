@@ -6,12 +6,14 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"sync"
 
+	"github.com/zalando/go-keyring"
 	"golang.org/x/crypto/hkdf"
 	"golang.org/x/crypto/scrypt"
 )
@@ -237,6 +239,182 @@ func (m *Manager) GetDatabaseKeyBytes() ([]byte, error) {
 	}
 
 	return result, nil
+}
+
+// Secure storage constants
+const (
+	// KeyringService is the service name used for keyring operations
+	KeyringService = "com.opd-ai.whisp"
+	// MasterKeyName is the key name for the master key in secure storage
+	MasterKeyName = "master_key"
+	// ConfigKeyPrefix is the prefix for configuration keys in secure storage
+	ConfigKeyPrefix = "config_"
+)
+
+// SecureStore stores a key-value pair in platform-specific secure storage
+func (m *Manager) SecureStore(key, value string) error {
+	if key == "" {
+		return fmt.Errorf("key cannot be empty")
+	}
+
+	// Try to store in platform-specific secure storage first
+	err := keyring.Set(KeyringService, key, value)
+	if err != nil {
+		// If keyring fails, fall back to encrypted file storage
+		return m.secureFileStore(key, value)
+	}
+
+	return nil
+}
+
+// SecureRetrieve retrieves a value from platform-specific secure storage
+func (m *Manager) SecureRetrieve(key string) (string, error) {
+	if key == "" {
+		return "", fmt.Errorf("key cannot be empty")
+	}
+
+	// Try to retrieve from platform-specific secure storage first
+	value, err := keyring.Get(KeyringService, key)
+	if err != nil {
+		// If keyring fails, try encrypted file storage fallback
+		return m.secureFileRetrieve(key)
+	}
+
+	return value, nil
+}
+
+// SecureDelete removes a key from platform-specific secure storage
+func (m *Manager) SecureDelete(key string) error {
+	if key == "" {
+		return fmt.Errorf("key cannot be empty")
+	}
+
+	// Try to delete from platform-specific secure storage first
+	err := keyring.Delete(KeyringService, key)
+	if err != nil {
+		// If keyring fails, try to delete from file storage fallback
+		return m.secureFileDelete(key)
+	}
+
+	return nil
+}
+
+// StoreMasterKey stores the master key in secure storage
+func (m *Manager) StoreMasterKey(masterKey []byte) error {
+	if len(masterKey) == 0 {
+		return fmt.Errorf("master key cannot be empty")
+	}
+
+	// Convert to hex string for storage
+	keyHex := hex.EncodeToString(masterKey)
+
+	return m.SecureStore(MasterKeyName, keyHex)
+}
+
+// LoadMasterKey loads the master key from secure storage
+func (m *Manager) LoadMasterKey() ([]byte, error) {
+	keyHex, err := m.SecureRetrieve(MasterKeyName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve master key: %w", err)
+	}
+
+	// Convert from hex string
+	masterKey, err := hex.DecodeString(keyHex)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode master key: %w", err)
+	}
+
+	return masterKey, nil
+}
+
+// DeleteMasterKey removes the master key from secure storage
+func (m *Manager) DeleteMasterKey() error {
+	return m.SecureDelete(MasterKeyName)
+}
+
+// secureFileStore stores data in encrypted file as fallback
+func (m *Manager) secureFileStore(key, value string) error {
+	if !m.isUnlocked || m.masterKey == nil {
+		return fmt.Errorf("security manager not unlocked")
+	}
+
+	// Encrypt the value
+	encryptedValue, err := m.EncryptData([]byte(value), "secure_storage")
+	if err != nil {
+		return fmt.Errorf("failed to encrypt value: %w", err)
+	}
+
+	// Store in secure directory
+	secureDir := filepath.Join(m.dataDir, "security", "keystore")
+	if err := os.MkdirAll(secureDir, 0700); err != nil {
+		return fmt.Errorf("failed to create secure directory: %w", err)
+	}
+
+	keyFile := filepath.Join(secureDir, key+".enc")
+	if err := os.WriteFile(keyFile, encryptedValue, 0600); err != nil {
+		return fmt.Errorf("failed to write encrypted file: %w", err)
+	}
+
+	return nil
+}
+
+// secureFileRetrieve retrieves data from encrypted file as fallback
+func (m *Manager) secureFileRetrieve(key string) (string, error) {
+	if !m.isUnlocked || m.masterKey == nil {
+		return "", fmt.Errorf("security manager not unlocked")
+	}
+
+	keyFile := filepath.Join(m.dataDir, "security", "keystore", key+".enc")
+	encryptedValue, err := os.ReadFile(keyFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to read encrypted file: %w", err)
+	}
+
+	// Decrypt the value
+	decryptedValue, err := m.DecryptData(encryptedValue, "secure_storage")
+	if err != nil {
+		return "", fmt.Errorf("failed to decrypt value: %w", err)
+	}
+
+	return string(decryptedValue), nil
+}
+
+// secureFileDelete removes encrypted file as fallback
+func (m *Manager) secureFileDelete(key string) error {
+	keyFile := filepath.Join(m.dataDir, "security", "keystore", key+".enc")
+	err := os.Remove(keyFile)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("failed to delete encrypted file: %w", err)
+	}
+
+	return nil
+}
+
+// IsSecureStorageAvailable checks if platform-specific secure storage is available
+func (m *Manager) IsSecureStorageAvailable() bool {
+	// Test by trying to store and retrieve a test value
+	testKey := "test_availability"
+	testValue := "test"
+
+	// Clean up any existing test key
+	keyring.Delete(KeyringService, testKey)
+
+	// Try to store a test value
+	if err := keyring.Set(KeyringService, testKey, testValue); err != nil {
+		return false
+	}
+
+	// Try to retrieve the test value
+	retrievedValue, err := keyring.Get(KeyringService, testKey)
+	if err != nil || retrievedValue != testValue {
+		keyring.Delete(KeyringService, testKey) // Clean up on failure
+		return false
+	}
+
+	// Clean up test key
+	keyring.Delete(KeyringService, testKey)
+
+	return true
 } // Cleanup cleans up security resources
 func (m *Manager) Cleanup() {
 	m.mu.Lock()

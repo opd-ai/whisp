@@ -67,6 +67,9 @@ This repository contains a **complete initial implementation** of the Whisp cros
 
 # Run the mobile UI demo (shows mobile layout on desktop)
 go run ./cmd/demo-mobile
+
+# Run the notification system demo (shows native notifications)
+go run ./cmd/demo-notifications
 ```
 
 ### Prerequisites

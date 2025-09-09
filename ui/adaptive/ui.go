@@ -18,9 +18,9 @@ type UI struct {
 	app      fyne.App
 	coreApp  CoreApp
 	platform Platform
-	
-	mainWindow fyne.Window
-	chatView   *shared.ChatView
+
+	mainWindow  fyne.Window
+	chatView    *shared.ChatView
 	contactList *shared.ContactList
 }
 
@@ -28,8 +28,8 @@ type UI struct {
 type CoreApp interface {
 	Start(ctx context.Context) error
 	GetToxID() string
-	GetContacts() *contact.Manager  
-	GetMessages() *message.Manager  
+	GetContacts() *contact.Manager
+	GetMessages() *message.Manager
 	SendMessageFromUI(friendID uint32, content string) error
 	AddContactFromUI(toxID, message string) error
 }
@@ -81,21 +81,6 @@ func (ui *UI) createMobileLayout() fyne.CanvasObject {
 
 	return tabs
 }
-	if err := ui.coreApp.Start(ctx); err != nil {
-		return fmt.Errorf("failed to start core app: %w", err)
-	}
-
-	// Initialize UI components with core app integration
-	ui.chatView = shared.NewChatView(ui.coreApp)
-	ui.contactList = shared.NewContactList(ui.coreApp)
-
-	// Set up contact selection callback
-	ui.contactList.SetOnContactSelect(func(friendID uint32) {
-		ui.chatView.SetCurrentFriend(friendID)
-	})
-
-	return nil
-}
 
 // ShowMainWindow shows the main application window
 func (ui *UI) ShowMainWindow() {
@@ -104,9 +89,9 @@ func (ui *UI) ShowMainWindow() {
 
 	// Create layout based on platform
 	if ui.platform.IsMobile() {
-		ui.createMobileLayout()
+		ui.setupMobileLayout()
 	} else {
-		ui.createDesktopLayout()
+		ui.setupDesktopLayout()
 	}
 
 	ui.mainWindow.ShowAndRun()
@@ -134,8 +119,14 @@ func (ui *UI) createDesktopLayout() fyne.CanvasObject {
 	)
 }
 
-// createMobileLayout creates the mobile layout
-func (ui *UI) createMobileLayout() {
+// setupDesktopLayout sets up the desktop layout and assigns it to the window
+func (ui *UI) setupDesktopLayout() {
+	content := ui.createDesktopLayout()
+	ui.mainWindow.SetContent(content)
+}
+
+// setupMobileLayout sets up the mobile layout and assigns it to the window
+func (ui *UI) setupMobileLayout() {
 	// Mobile layout with tabs
 	tabs := container.NewAppTabs(
 		container.NewTabItem("Chats", ui.contactList.Container()),
@@ -168,12 +159,12 @@ func (ui *UI) createMenuBar() *fyne.Container {
 			dialog := widget.NewEntry()
 			dialog.SetText(toxID)
 			dialog.Disable()
-			
+
 			content := container.NewVBox(
 				widget.NewLabel("Your Tox ID:"),
 				dialog,
 			)
-			
+
 			popup := widget.NewModalPopUp(content, ui.mainWindow.Canvas())
 			popup.Show()
 		}),

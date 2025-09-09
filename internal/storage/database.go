@@ -4,8 +4,10 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"time"
 
 	_ "github.com/mutecomm/go-sqlcipher/v4"
 )
@@ -37,15 +39,18 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 	var dsn string
 	encrypted := securityManager != nil
 
+	var db *sql.DB
+	var err error
+
 	if encrypted {
-		// Use SQLCipher for encrypted database
-		dsn = fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", dbPath)
+		// Use SQLCipher for encrypted database - use different driver name
+		dsn = fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)", dbPath)
+		db, err = sql.Open("sqlite3", dsn)
 	} else {
 		// Use regular SQLite for unencrypted database (fallback)
 		dsn = fmt.Sprintf("file:%s?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)", dbPath)
+		db, err = sql.Open("sqlite3", dsn)
 	}
-
-	db, err := sql.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
@@ -101,6 +106,12 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
+	// Run migrations
+	if err := storage.runMigrations(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("failed to run migrations: %w", err)
+	}
+
 	encryptionStatus := "unencrypted"
 	if encrypted {
 		encryptionStatus = "encrypted"
@@ -112,6 +123,11 @@ func NewDatabaseWithEncryption(dbPath string, securityManager SecurityManager) (
 // Close closes the database connection
 func (d *Database) Close() error {
 	if d.db != nil {
+		// For WAL mode, ensure all transactions are committed
+		if _, err := d.db.Exec("PRAGMA wal_checkpoint(TRUNCATE)"); err != nil {
+			log.Printf("Warning: Failed to checkpoint WAL: %v", err)
+		}
+
 		return d.db.Close()
 	}
 	return nil
@@ -171,6 +187,7 @@ func (d *Database) initSchema() error {
 	-- Messages table
 	CREATE TABLE IF NOT EXISTS messages (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		uuid TEXT UNIQUE NOT NULL,
 		friend_id INTEGER NOT NULL,
 		content TEXT NOT NULL,
 		message_type INTEGER NOT NULL DEFAULT 0,
@@ -216,12 +233,163 @@ func (d *Database) initSchema() error {
 	-- Create indexes
 	CREATE INDEX IF NOT EXISTS idx_messages_friend_id ON messages(friend_id);
 	CREATE INDEX IF NOT EXISTS idx_messages_timestamp ON messages(timestamp);
+	CREATE INDEX IF NOT EXISTS idx_messages_uuid ON messages(uuid);
 	CREATE INDEX IF NOT EXISTS idx_contacts_friend_id ON contacts(friend_id);
 	CREATE INDEX IF NOT EXISTS idx_file_transfers_friend_id ON file_transfers(friend_id);
 	`
 
 	_, err := d.db.Exec(schema)
 	return err
+}
+
+// runMigrations runs database migrations to handle schema changes
+func (d *Database) runMigrations() error {
+	// Create migrations table if it doesn't exist
+	migrationsSchema := `
+	CREATE TABLE IF NOT EXISTS migrations (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		version TEXT UNIQUE NOT NULL,
+		applied_at DATETIME NOT NULL
+	);`
+
+	if _, err := d.db.Exec(migrationsSchema); err != nil {
+		return fmt.Errorf("failed to create migrations table: %w", err)
+	}
+
+	// Define migrations
+	migrations := []struct {
+		version string
+		sql     string
+	}{
+		{
+			version: "add_uuid_to_messages",
+			sql: `
+			-- Check if uuid column exists, if not add it
+			PRAGMA table_info(messages);
+			-- This is a more complex migration that requires checking column existence
+			-- For SQLite, we need to use a different approach
+			`,
+		},
+	}
+
+	// Apply migrations
+	for _, migration := range migrations {
+		// Check if migration was already applied
+		var count int
+		err := d.db.QueryRow("SELECT COUNT(*) FROM migrations WHERE version = ?", migration.version).Scan(&count)
+		if err != nil {
+			return fmt.Errorf("failed to check migration status: %w", err)
+		}
+
+		if count > 0 {
+			continue // Migration already applied
+		}
+
+		// Special handling for UUID migration
+		if migration.version == "add_uuid_to_messages" {
+			if err := d.migrateAddUUIDToMessages(); err != nil {
+				return fmt.Errorf("failed to apply UUID migration: %w", err)
+			}
+		} else {
+			// Apply regular migration
+			if _, err := d.db.Exec(migration.sql); err != nil {
+				return fmt.Errorf("failed to apply migration %s: %w", migration.version, err)
+			}
+		}
+
+		// Record migration as applied
+		if _, err := d.db.Exec("INSERT INTO migrations (version, applied_at) VALUES (?, ?)",
+			migration.version, "datetime('now')"); err != nil {
+			return fmt.Errorf("failed to record migration: %w", err)
+		}
+
+		log.Printf("Applied migration: %s", migration.version)
+	}
+
+	return nil
+}
+
+// migrateAddUUIDToMessages adds UUID column to messages table if it doesn't exist
+func (d *Database) migrateAddUUIDToMessages() error {
+	// Check if uuid column already exists
+	rows, err := d.db.Query("PRAGMA table_info(messages)")
+	if err != nil {
+		return fmt.Errorf("failed to get table info: %w", err)
+	}
+	defer rows.Close()
+
+	hasUUID := false
+	for rows.Next() {
+		var cid int
+		var name, dataType string
+		var notNull, primaryKey int
+		var defaultValue sql.NullString
+
+		if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &primaryKey); err != nil {
+			return fmt.Errorf("failed to scan column info: %w", err)
+		}
+
+		if name == "uuid" {
+			hasUUID = true
+			break
+		}
+	}
+
+	if hasUUID {
+		return nil // UUID column already exists
+	}
+
+	// Add UUID column with a default value, then update existing rows
+	tx, err := d.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Add the column with a temporary default
+	if _, err := tx.Exec("ALTER TABLE messages ADD COLUMN uuid TEXT"); err != nil {
+		return fmt.Errorf("failed to add uuid column: %w", err)
+	}
+
+	// Generate UUIDs for existing messages
+	rows, err = tx.Query("SELECT id FROM messages WHERE uuid IS NULL OR uuid = ''")
+	if err != nil {
+		return fmt.Errorf("failed to query existing messages: %w", err)
+	}
+
+	var messageIDs []int64
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
+			return fmt.Errorf("failed to scan message ID: %w", err)
+		}
+		messageIDs = append(messageIDs, id)
+	}
+	rows.Close()
+
+	// Update each message with a UUID
+	for _, id := range messageIDs {
+		uuid := generateUUID()
+		if _, err := tx.Exec("UPDATE messages SET uuid = ? WHERE id = ?", uuid, id); err != nil {
+			return fmt.Errorf("failed to update message UUID: %w", err)
+		}
+	}
+
+	// Create the unique constraint on uuid column (SQLite doesn't support adding constraints)
+	// We'll create a unique index instead
+	if _, err := tx.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_messages_uuid_unique ON messages(uuid)"); err != nil {
+		return fmt.Errorf("failed to create unique index on uuid: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+// generateUUID generates a simple UUID string without external dependencies
+func generateUUID() string {
+	// Use a simple time-based approach for migration purposes
+	// In real code, the message manager uses proper UUID library
+	return fmt.Sprintf("msg_%d_%d", time.Now().UnixNano(), rand.Int63())
 }
 
 // ensureDir creates a directory if it doesn't exist

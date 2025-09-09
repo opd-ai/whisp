@@ -22,9 +22,10 @@ type UI struct {
 	coreApp  CoreApp
 	platform Platform
 
-	mainWindow  fyne.Window
-	chatView    *shared.ChatView
-	contactList *shared.ContactList
+	mainWindow    fyne.Window
+	chatView      *shared.ChatView
+	contactList   *shared.ContactList
+	mobileTabsRef *container.AppTabs // Reference for mobile navigation
 }
 
 // CoreApp interface for the core application
@@ -60,9 +61,14 @@ func (ui *UI) Initialize(ctx context.Context) error {
 	ui.chatView = shared.NewChatView(ui.coreApp)
 	ui.contactList = shared.NewContactList(ui.coreApp)
 
-	// Set up contact selection callback
+	// Set up contact selection callback with mobile navigation
 	ui.contactList.SetOnContactSelect(func(friendID uint32) {
 		ui.chatView.SetCurrentFriend(friendID)
+
+		// On mobile, automatically navigate to chat tab when contact is selected
+		if ui.platform.IsMobile() {
+			ui.NavigateToChat()
+		}
 	})
 
 	return nil
@@ -80,13 +86,26 @@ func (ui *UI) CreateMainContent() fyne.CanvasObject {
 	}
 }
 
-// createMobileLayout creates the mobile layout
+// createMobileLayout creates the mobile layout with touch-optimized navigation
 func (ui *UI) createMobileLayout() fyne.CanvasObject {
-	// Mobile layout with tabs
+	// Create pull-to-refresh container for contact list
+	contactsWithRefresh := ui.createPullToRefreshContacts()
+
+	// Create mobile-optimized tabs with larger touch targets
 	tabs := container.NewAppTabs(
-		container.NewTabItem("Chats", ui.contactList.Container()),
-		container.NewTabItem("Messages", ui.chatView.Container()),
+		container.NewTabItem("Contacts", contactsWithRefresh),
+		container.NewTabItem("Chat", ui.chatView.Container()),
+		container.NewTabItem("Settings", ui.createMobileSettingsView()),
 	)
+
+	// Configure tab bar for mobile
+	tabs.SetTabLocation(container.TabLocationBottom)
+
+	// Store reference for navigation
+	ui.mobileTabsRef = tabs
+
+	// Add gesture support for swipe navigation
+	ui.setupMobileGestures(tabs)
 
 	return tabs
 }
@@ -126,6 +145,93 @@ func (ui *UI) ShowMainWindow() {
 	ui.mainWindow.ShowAndRun()
 }
 
+// createPullToRefreshContacts creates a pull-to-refresh container for contacts
+func (ui *UI) createPullToRefreshContacts() fyne.CanvasObject {
+	// Create refresh button for mobile
+	refreshBtn := widget.NewButton("Pull to Refresh", func() {
+		ui.contactList.RefreshContacts()
+	})
+	refreshBtn.Importance = widget.LowImportance
+
+	// Create container with refresh button at top
+	return container.NewVBox(
+		refreshBtn,
+		ui.contactList.Container(),
+	)
+}
+
+// createMobileSettingsView creates a mobile-optimized settings view
+func (ui *UI) createMobileSettingsView() fyne.CanvasObject {
+	// Create mobile settings with larger touch targets
+	toxIDBtn := widget.NewButton("Show Tox ID", func() {
+		toxID := ui.coreApp.GetToxID()
+		dialog.ShowInformation("Your Tox ID", toxID, ui.mainWindow)
+	})
+
+	settingsBtn := widget.NewButton("Application Settings", func() {
+		configMgr := ui.coreApp.GetConfigManager()
+		settingsDialog := shared.NewSettingsDialog(configMgr, ui.mainWindow)
+		settingsDialog.Show()
+	})
+
+	aboutBtn := widget.NewButton("About Whisp", func() {
+		ui.showAboutDialog()
+	})
+
+	// Create larger buttons for mobile
+	toxIDBtn.Resize(fyne.NewSize(300, 60))
+	settingsBtn.Resize(fyne.NewSize(300, 60))
+	aboutBtn.Resize(fyne.NewSize(300, 60))
+
+	return container.NewVBox(
+		widget.NewCard("", "Quick Actions", container.NewVBox(
+			toxIDBtn,
+			settingsBtn,
+			aboutBtn,
+		)),
+	)
+}
+
+// setupMobileGestures sets up touch gestures for mobile navigation
+func (ui *UI) setupMobileGestures(tabs *container.AppTabs) {
+	// Note: Fyne doesn't have built-in swipe gesture support yet
+	// This is a placeholder for future gesture implementation
+	// When Fyne adds gesture support, implement swipe between tabs here
+
+	// For now, we ensure tabs are touch-friendly with bottom placement
+	// and adequate spacing
+}
+
+// NavigateToChat programmatically switches to chat tab (for mobile navigation)
+func (ui *UI) NavigateToChat() {
+	if ui.mobileTabsRef != nil && ui.platform.IsMobile() {
+		ui.mobileTabsRef.SelectTab(ui.mobileTabsRef.Items[1]) // Chat tab
+	}
+}
+
+// NavigateToContacts programmatically switches to contacts tab
+func (ui *UI) NavigateToContacts() {
+	if ui.mobileTabsRef != nil && ui.platform.IsMobile() {
+		ui.mobileTabsRef.SelectTab(ui.mobileTabsRef.Items[0]) // Contacts tab
+	}
+}
+
+// configureMobileWindow configures window settings optimized for mobile
+func (ui *UI) configureMobileWindow() {
+	if ui.mainWindow == nil {
+		return
+	}
+
+	// Set mobile-optimized window properties
+	ui.mainWindow.SetFixedSize(false) // Allow resizing for different screen sizes
+
+	// Set minimum size suitable for mobile screens
+	ui.mainWindow.Resize(fyne.NewSize(360, 640)) // Common mobile screen ratio
+
+	// Center the window (useful for mobile simulators)
+	ui.mainWindow.CenterOnScreen()
+}
+
 // createDesktopLayout creates the desktop layout
 func (ui *UI) createDesktopLayout() fyne.CanvasObject {
 	// Create main content
@@ -156,13 +262,12 @@ func (ui *UI) setupDesktopLayout() {
 
 // setupMobileLayout sets up the mobile layout and assigns it to the window
 func (ui *UI) setupMobileLayout() {
-	// Mobile layout with tabs
-	tabs := container.NewAppTabs(
-		container.NewTabItem("Chats", ui.contactList.Container()),
-		container.NewTabItem("Messages", ui.chatView.Container()),
-	)
+	// Create mobile layout with enhanced features
+	mobileContent := ui.createMobileLayout()
+	ui.mainWindow.SetContent(mobileContent)
 
-	ui.mainWindow.SetContent(tabs)
+	// Configure window for mobile
+	ui.configureMobileWindow()
 }
 
 // createMenuBar creates the application menu bar

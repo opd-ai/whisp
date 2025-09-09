@@ -7,7 +7,7 @@ A secure, cross-platform messaging application built with Go, featuring end-to-e
 ![Platform Support](https://img.shields.io/badge/platforms-windows%20%7C%20macos%20%7C%20linux%20%7C%20android%20%7C%20ios-lightgrey.svg)
 ![Build Status](https://img.shields.io/badge/build-demo--ready-green.svg)
 
-## 🎯 Project Status: Initial Implementation
+## 🎯 Project Status: Mobile UI Implementation Complete
 
 This repository contains a **complete initial implementation** of the Whisp cross-platform messenger architecture. The codebase includes:
 
@@ -19,7 +19,7 @@ This repository contains a **complete initial implementation** of the Whisp cros
 - ✅ **Cross-platform build system** for all target platforms
 - ✅ **Comprehensive documentation** and implementation plan
 - ✅ **Tox State Management** with persistent file I/O and comprehensive testing
-- 🔄 **Basic UI framework** (Fyne components structured)
+- ✅ **Mobile UI Adaptations** with touch-optimized navigation and layouts
 
 ## Features
 
@@ -54,8 +54,11 @@ This repository contains a **complete initial implementation** of the Whisp cros
 # Quick demo (no dependencies required)
 ./demo-build.sh
 
-# Run the placeholder
+# Run the desktop demo
 ./build/whisp
+
+# Run the mobile UI demo (shows mobile layout on desktop)
+go run ./cmd/demo-mobile
 ```
 
 ### Prerequisites

@@ -1,7 +1,9 @@
 package adaptive
 
 import (
+	"os"
 	"runtime"
+	"strings"
 )
 
 // Platform represents the detected platform
@@ -22,10 +24,16 @@ func DetectPlatform() Platform {
 	case "windows":
 		return PlatformWindows
 	case "darwin":
-		// TODO: Distinguish between macOS and iOS
+		// Detect iOS vs macOS based on architecture and build tags
+		if isIOSEnvironment() {
+			return PlatformIOS
+		}
 		return PlatformMacOS
 	case "linux":
-		// TODO: Distinguish between Linux and Android
+		// Detect Android vs Linux based on environment
+		if isAndroidEnvironment() {
+			return PlatformAndroid
+		}
 		return PlatformLinux
 	default:
 		return PlatformUnknown
@@ -45,4 +53,28 @@ func (p Platform) IsDesktop() bool {
 // String returns the string representation of the platform
 func (p Platform) String() string {
 	return string(p)
+}
+
+// isIOSEnvironment detects if running on iOS
+func isIOSEnvironment() bool {
+	// Check for iOS-specific environment indicators
+	// In a real iOS build, these would be set by the build system
+	if runtime.GOARCH == "arm64" {
+		// Check for iOS-specific environment variables or build tags
+		if strings.Contains(strings.ToLower(os.Getenv("HOME")), "mobile") {
+			return true
+		}
+	}
+	return false
+}
+
+// isAndroidEnvironment detects if running on Android
+func isAndroidEnvironment() bool {
+	// Check for Android-specific environment indicators
+	// In a real Android build, these would be set by the build system
+	if strings.Contains(strings.ToLower(os.Getenv("ANDROID_DATA")), "android") ||
+		strings.Contains(strings.ToLower(os.Getenv("ANDROID_ROOT")), "android") {
+		return true
+	}
+	return false
 }

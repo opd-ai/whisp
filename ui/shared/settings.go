@@ -63,17 +63,27 @@ func (sd *SettingsDialog) Show() {
 // Organizes settings into logical groups for usability
 func (sd *SettingsDialog) createContent() fyne.CanvasObject {
 	tabs := container.NewAppTabs(
-		container.NewTabWithText("General", sd.createGeneralTab()),
-		container.NewTabWithText("Privacy", sd.createPrivacyTab()),
-		container.NewTabWithText("Notifications", sd.createNotificationsTab()),
-		container.NewTabWithText("Advanced", sd.createAdvancedTab()),
+		container.NewTabItem("General", sd.createGeneralTab()),
+		container.NewTabItem("Privacy", sd.createPrivacyTab()),
+		container.NewTabItem("Notifications", sd.createNotificationsTab()),
+		container.NewTabItem("Advanced", sd.createAdvancedTab()),
 	)
 
 	// Add save/apply buttons at the bottom
-	saveBtn := widget.NewButton("Save", sd.saveSettings)
+	saveBtn := widget.NewButton("Save", func() {
+		if err := sd.applySettings(); err != nil {
+			dialog.ShowError(err, sd.parentWindow)
+			return
+		}
+		sd.dialog.Hide()
+	})
 	saveBtn.Importance = widget.HighImportance
 
-	applyBtn := widget.NewButton("Apply", sd.applySettings)
+	applyBtn := widget.NewButton("Apply", func() {
+		if err := sd.applySettings(); err != nil {
+			dialog.ShowError(err, sd.parentWindow)
+		}
+	})
 	resetBtn := widget.NewButton("Reset to Defaults", sd.resetToDefaults)
 
 	buttonContainer := container.NewHBox(
@@ -338,15 +348,6 @@ var formReferences = make(map[string]map[string]interface{})
 // storeFormReferences stores widget references for later access
 func (sd *SettingsDialog) storeFormReferences(section string, refs map[string]interface{}) {
 	formReferences[section] = refs
-}
-
-// saveSettings saves the current settings and closes the dialog
-func (sd *SettingsDialog) saveSettings() {
-	if err := sd.applySettings(); err != nil {
-		dialog.ShowError(err, sd.parentWindow)
-		return
-	}
-	sd.dialog.Hide()
 }
 
 // applySettings applies the current form values to configuration

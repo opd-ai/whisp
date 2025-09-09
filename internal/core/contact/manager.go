@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/opd-ai/toxcore"
 	"github.com/opd-ai/whisp/internal/storage"
 )
 
@@ -41,7 +42,7 @@ type Contact struct {
 type Manager struct {
 	db     *storage.Database
 	toxMgr ToxManager // Interface to avoid circular dependency
-	
+
 	mu       sync.RWMutex
 	contacts map[uint32]*Contact // friendID -> Contact
 	pending  []PendingRequest
@@ -87,7 +88,7 @@ func (m *Manager) loadContacts() error {
 		       avatar, status, is_blocked, is_favorite, created_at, updated_at, last_seen_at
 		FROM contacts WHERE is_blocked = 0
 	`
-	
+
 	rows, err := m.db.Query(query)
 	if err != nil {
 		return fmt.Errorf("failed to query contacts: %w", err)
@@ -97,7 +98,7 @@ func (m *Manager) loadContacts() error {
 	for rows.Next() {
 		contact := &Contact{}
 		var avatar sql.NullString
-		
+
 		err := rows.Scan(
 			&contact.ID, &contact.ToxID, &contact.PublicKey, &contact.FriendID,
 			&contact.Name, &contact.StatusMessage, &avatar, &contact.Status,
@@ -276,7 +277,7 @@ func (m *Manager) UpdateStatusMessage(friendID uint32, statusMessage string) {
 }
 
 // UpdateStatus updates a contact's status
-func (m *Manager) UpdateStatus(friendID uint32, status interface{}) {
+func (m *Manager) UpdateStatus(friendID uint32, status toxcore.FriendStatus) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -288,11 +289,11 @@ func (m *Manager) UpdateStatus(friendID uint32, status interface{}) {
 	// Convert Tox status to our status
 	var newStatus Status
 	switch status {
-	case 0: // UserStatusNone
+	case toxcore.FriendStatusNone:
 		newStatus = StatusOnline
-	case 1: // UserStatusAway
+	case toxcore.FriendStatusAway:
 		newStatus = StatusAway
-	case 2: // UserStatusBusy
+	case toxcore.FriendStatusBusy:
 		newStatus = StatusBusy
 	default:
 		newStatus = StatusOffline
@@ -309,42 +310,6 @@ func (m *Manager) UpdateStatus(friendID uint32, status interface{}) {
 		query := `UPDATE contacts SET status = ?, updated_at = ?, last_seen_at = ? WHERE friend_id = ?`
 		if _, err := m.db.Exec(query, newStatus, contact.UpdatedAt, contact.LastSeenAt, friendID); err != nil {
 			log.Printf("Failed to update contact status: %v", err)
-		}
-	}()
-}
-
-// UpdateConnectionStatus updates a contact's connection status
-func (m *Manager) UpdateConnectionStatus(friendID uint32, status interface{}) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	contact, exists := m.contacts[friendID]
-	if !exists {
-		return
-	}
-
-	// Convert connection status to our status
-	var newStatus Status
-	switch status {
-	case 0: // ConnectionStatusNone
-		newStatus = StatusOffline
-	case 1, 2: // ConnectionStatusTCP, ConnectionStatusUDP
-		newStatus = StatusOnline
-	default:
-		newStatus = StatusOffline
-	}
-
-	contact.Status = newStatus
-	contact.UpdatedAt = time.Now()
-	if newStatus != StatusOffline {
-		contact.LastSeenAt = time.Now()
-	}
-
-	// Update database
-	go func() {
-		query := `UPDATE contacts SET status = ?, updated_at = ?, last_seen_at = ? WHERE friend_id = ?`
-		if _, err := m.db.Exec(query, newStatus, contact.UpdatedAt, contact.LastSeenAt, friendID); err != nil {
-			log.Printf("Failed to update contact connection status: %v", err)
 		}
 	}()
 }
@@ -389,7 +354,7 @@ func (m *Manager) saveContact(contact *Contact) error {
 		                     avatar, status, is_blocked, is_favorite, created_at, updated_at, last_seen_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
-	
+
 	result, err := m.db.Exec(query,
 		contact.ToxID, contact.PublicKey, contact.FriendID, contact.Name,
 		contact.StatusMessage, contact.Avatar, contact.Status, contact.IsBlocked,

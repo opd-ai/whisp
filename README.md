@@ -129,7 +129,7 @@ whisp/
 | **Contact Management** | ✅ Complete | Friends, requests, status, verification |
 | **Security Framework** | ✅ Complete | Encryption, key management, auth |
 | **Build System** | ✅ Complete | Cross-platform builds and packaging |
-| **Tox Integration** | 🔄 Placeholder | Ready for real toxcore library |
+| **Tox Integration** | ✅ Complete | Full toxcore integration with state management |
 | **UI Implementation** | 🔄 Framework | Fyne components structured, needs implementation |
 | **Platform Packages** | 📋 Planned | Installers and app store packages |
 

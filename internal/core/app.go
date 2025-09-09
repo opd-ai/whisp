@@ -28,13 +28,14 @@ type Config struct {
 
 // App represents the core application logic
 type App struct {
-	config    *Config
-	configMgr *configpkg.Manager
-	tox       *tox.Manager
-	storage   *storage.Database
-	contacts  *contact.Manager
-	messages  *message.Manager
-	security  *security.Manager
+	config        *Config
+	configMgr     *configpkg.Manager
+	tox           *tox.Manager
+	storage       *storage.Database
+	contacts      *contact.Manager
+	messages      *message.Manager
+	security      *security.Manager
+	notifications *NotificationService
 
 	mu       sync.RWMutex
 	running  bool
@@ -91,6 +92,9 @@ func NewApp(config *Config) (*App, error) {
 		shutdown:  make(chan struct{}),
 	}
 
+	// Initialize notification service
+	app.notifications = NewNotificationService(app)
+
 	// Set up Tox callbacks
 	if err := app.setupToxCallbacks(); err != nil {
 		app.Cleanup()
@@ -112,6 +116,12 @@ func (a *App) Start(ctx context.Context) error {
 	// Start Tox
 	if err := a.tox.Start(); err != nil {
 		return fmt.Errorf("failed to start Tox: %w", err)
+	}
+
+	// Start notification service
+	if err := a.notifications.Start(ctx); err != nil {
+		log.Printf("Warning: Failed to start notification service: %v", err)
+		// Don't fail startup for notification issues
 	}
 
 	a.running = true
@@ -139,12 +149,22 @@ func (a *App) Stop() error {
 		log.Printf("Error stopping Tox: %v", err)
 	}
 
+	// Stop notification service
+	if a.notifications != nil {
+		if err := a.notifications.Stop(); err != nil {
+			log.Printf("Error stopping notification service: %v", err)
+		}
+	}
+
 	log.Println("Application stopped")
 	return nil
 }
 
 // Cleanup cleans up resources
 func (a *App) Cleanup() {
+	if a.notifications != nil {
+		a.notifications.Stop()
+	}
 	if a.tox != nil {
 		a.tox.Cleanup()
 	}
@@ -176,6 +196,11 @@ func (a *App) GetContacts() *contact.Manager {
 // GetMessages returns the message manager
 func (a *App) GetMessages() *message.Manager {
 	return a.messages
+}
+
+// GetNotifications returns the notification service
+func (a *App) GetNotifications() *NotificationService {
+	return a.notifications
 }
 
 // GetSecurity returns the security manager

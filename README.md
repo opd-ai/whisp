@@ -7,7 +7,7 @@ A secure, cross-platform messaging application built with Go, featuring end-to-e
 ![Platform Support](https://img.shields.io/badge/platforms-windows%20%7C%20macos%20%7C%20linux%20%7C%20android%20%7C%20ios-lightgrey.svg)
 ![Build Status](https://img.shields.io/badge/build-demo--ready-green.svg)
 
-## 🎯 Project Status: Mobile UI Implementation Complete
+## 🎯 Project Status: Platform Notification System Complete
 
 This repository contains a **complete initial implementation** of the Whisp cross-platform messenger architecture. The codebase includes:
 
@@ -20,6 +20,7 @@ This repository contains a **complete initial implementation** of the Whisp cros
 - ✅ **Comprehensive documentation** and implementation plan
 - ✅ **Tox State Management** with persistent file I/O and comprehensive testing
 - ✅ **Mobile UI Adaptations** with touch-optimized navigation and layouts
+- ✅ **Platform-Specific Notifications** with native OS integration and privacy controls
 
 ## Features
 
@@ -45,6 +46,13 @@ This repository contains a **complete initial implementation** of the Whisp cros
 - **Adaptive UI** that follows platform conventions
 - **Synchronized** experience across devices
 - **Single codebase** with 85%+ code reuse
+
+### 🔔 Smart Notifications
+- **Native OS integration** with cross-platform notification support
+- **Privacy controls** to hide sensitive message content
+- **Quiet hours** with configurable do-not-disturb periods
+- **Notification types** for messages, friend requests, status updates
+- **Platform adaptation** with desktop and mobile-optimized notifications
 
 ## Quick Start
 

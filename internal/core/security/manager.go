@@ -251,7 +251,19 @@ const (
 	ConfigKeyPrefix = "config_"
 )
 
-// SecureStore stores a key-value pair in platform-specific secure storage
+// SecureStore stores a key-value pair in platform-specific secure storage.
+// This method attempts to use platform-specific secure storage first (Keychain on macOS,
+// Credential Manager on Windows, Secret Service on Linux), and falls back to
+// encrypted file storage if platform storage is unavailable.
+//
+// The value is stored as-is in platform storage, or encrypted with AES-256-GCM
+// and stored in a file when using the fallback method.
+//
+// Parameters:
+//   - key: The key to store the value under (cannot be empty)
+//   - value: The value to store securely
+//
+// Returns an error if the key is empty or if both platform storage and file fallback fail.
 func (m *Manager) SecureStore(key, value string) error {
 	if key == "" {
 		return fmt.Errorf("key cannot be empty")
@@ -267,7 +279,15 @@ func (m *Manager) SecureStore(key, value string) error {
 	return nil
 }
 
-// SecureRetrieve retrieves a value from platform-specific secure storage
+// SecureRetrieve retrieves a value from platform-specific secure storage.
+// This method attempts to retrieve from platform-specific secure storage first,
+// and falls back to encrypted file storage if platform storage is unavailable.
+//
+// Parameters:
+//   - key: The key to retrieve the value for (cannot be empty)
+//
+// Returns the stored value and an error if the key is empty, not found, or
+// if both platform storage and file fallback fail.
 func (m *Manager) SecureRetrieve(key string) (string, error) {
 	if key == "" {
 		return "", fmt.Errorf("key cannot be empty")
@@ -299,7 +319,17 @@ func (m *Manager) SecureDelete(key string) error {
 	return nil
 }
 
-// StoreMasterKey stores the master key in secure storage
+// StoreMasterKey stores the master key in secure storage.
+// The master key is encoded as a hexadecimal string before storage to ensure
+// safe handling across different storage backends.
+//
+// This method is typically used during application setup or when the master key
+// needs to be persisted for future application sessions.
+//
+// Parameters:
+//   - masterKey: The 32-byte master key to store (cannot be empty)
+//
+// Returns an error if the master key is empty or if storage fails.
 func (m *Manager) StoreMasterKey(masterKey []byte) error {
 	if len(masterKey) == 0 {
 		return fmt.Errorf("master key cannot be empty")
@@ -311,7 +341,13 @@ func (m *Manager) StoreMasterKey(masterKey []byte) error {
 	return m.SecureStore(MasterKeyName, keyHex)
 }
 
-// LoadMasterKey loads the master key from secure storage
+// LoadMasterKey loads the master key from secure storage.
+// The key is retrieved as a hexadecimal string and decoded back to bytes.
+//
+// This method is typically used during application startup to restore the
+// master key for cryptographic operations.
+//
+// Returns the 32-byte master key and an error if retrieval or decoding fails.
 func (m *Manager) LoadMasterKey() ([]byte, error) {
 	keyHex, err := m.SecureRetrieve(MasterKeyName)
 	if err != nil {
@@ -390,7 +426,17 @@ func (m *Manager) secureFileDelete(key string) error {
 	return nil
 }
 
-// IsSecureStorageAvailable checks if platform-specific secure storage is available
+// IsSecureStorageAvailable checks if platform-specific secure storage is available.
+// This method performs a test operation by storing and retrieving a test value
+// to verify that the platform's secure storage system is functional.
+//
+// Platform support:
+//   - Windows: Windows Credential Manager
+//   - macOS: Keychain Services
+//   - Linux: Secret Service API (GNOME Keyring, KDE Wallet)
+//
+// Returns true if platform-specific secure storage is available and functional,
+// false if only encrypted file fallback can be used.
 func (m *Manager) IsSecureStorageAvailable() bool {
 	// Test by trying to store and retrieve a test value
 	testKey := "test_availability"

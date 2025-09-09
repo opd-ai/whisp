@@ -570,3 +570,276 @@ func TestSecureStorageCleanup(t *testing.T) {
 		t.Error("Expected error when using file fallback after cleanup")
 	}
 }
+
+func TestSecureStorageIntegration(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	// Generate and set master key
+	masterKey, err := manager.GenerateMasterKey()
+	if err != nil {
+		t.Fatalf("Failed to generate master key: %v", err)
+	}
+	manager.SetMasterKey(masterKey)
+
+	// Test multiple key-value pairs
+	testData := map[string]string{
+		"config_theme":    "dark",
+		"config_language": "en",
+		"user_token":      "abc123def456",
+		"backup_key":      "backup_secret_key",
+		"session_id":      "session_12345",
+	}
+
+	// Store all data
+	for key, value := range testData {
+		if err := manager.SecureStore(key, value); err != nil {
+			t.Fatalf("Failed to store %s: %v", key, err)
+		}
+	}
+
+	// Retrieve and verify all data
+	for key, expectedValue := range testData {
+		actualValue, err := manager.SecureRetrieve(key)
+		if err != nil {
+			t.Fatalf("Failed to retrieve %s: %v", key, err)
+		}
+		if actualValue != expectedValue {
+			t.Errorf("For key %s: expected %s, got %s", key, expectedValue, actualValue)
+		}
+	}
+
+	// Test overwriting existing values
+	newValue := "new_dark_theme"
+	if err := manager.SecureStore("config_theme", newValue); err != nil {
+		t.Fatalf("Failed to overwrite value: %v", err)
+	}
+
+	retrievedValue, err := manager.SecureRetrieve("config_theme")
+	if err != nil {
+		t.Fatalf("Failed to retrieve overwritten value: %v", err)
+	}
+	if retrievedValue != newValue {
+		t.Errorf("Expected overwritten value %s, got %s", newValue, retrievedValue)
+	}
+
+	// Clean up
+	for key := range testData {
+		if err := manager.SecureDelete(key); err != nil {
+			t.Errorf("Failed to delete %s: %v", key, err)
+		}
+	}
+}
+
+func TestSecureFileStorageDirectoryCreation(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	// Generate and set master key
+	masterKey, err := manager.GenerateMasterKey()
+	if err != nil {
+		t.Fatalf("Failed to generate master key: %v", err)
+	}
+	manager.SetMasterKey(masterKey)
+
+	// Store data which should create keystore directory
+	err = manager.secureFileStore("test_key", "test_value")
+	if err != nil {
+		t.Fatalf("Failed to store in file fallback: %v", err)
+	}
+
+	// Verify keystore directory was created
+	keystoreDir := filepath.Join(tempDir, "security", "keystore")
+	if _, err := os.Stat(keystoreDir); os.IsNotExist(err) {
+		t.Error("Keystore directory was not created")
+	}
+
+	// Verify encrypted file exists
+	keyFile := filepath.Join(keystoreDir, "test_key.enc")
+	if _, err := os.Stat(keyFile); os.IsNotExist(err) {
+		t.Error("Encrypted key file was not created")
+	}
+}
+
+func TestSecureFileDeleteNonExistent(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	// Try to delete non-existent file - should not error
+	err = manager.secureFileDelete("non_existent_key")
+	if err != nil {
+		t.Errorf("Unexpected error when deleting non-existent file: %v", err)
+	}
+}
+
+func TestMasterKeyHexEncoding(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	// Test with known key to verify hex encoding/decoding
+	testKey := []byte{0x01, 0x23, 0x45, 0x67, 0x89, 0xAB, 0xCD, 0xEF}
+
+	err = manager.StoreMasterKey(testKey)
+	if err != nil {
+		t.Fatalf("Failed to store master key: %v", err)
+	}
+
+	loadedKey, err := manager.LoadMasterKey()
+	if err != nil {
+		t.Fatalf("Failed to load master key: %v", err)
+	}
+
+	if !bytes.Equal(testKey, loadedKey) {
+		t.Errorf("Hex encoding/decoding failed. Original: %x, Loaded: %x", testKey, loadedKey)
+	}
+}
+
+func TestSecureStorageAvailabilityCheck(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	// Test the availability check multiple times to ensure it's stable
+	available1 := manager.IsSecureStorageAvailable()
+	available2 := manager.IsSecureStorageAvailable()
+
+	if available1 != available2 {
+		t.Error("Secure storage availability should be consistent across calls")
+	}
+
+	// The actual value depends on the test environment
+	t.Logf("Secure storage available: %v", available1)
+}
+
+func TestDeriveKey(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	password := []byte("test_password")
+	salt := []byte("test_salt_1234567890abcdef1234567890abcdef")
+
+	key, err := manager.DeriveKey(password, salt)
+	if err != nil {
+		t.Fatalf("Failed to derive key: %v", err)
+	}
+
+	if len(key) != 32 {
+		t.Errorf("Expected derived key length 32, got %d", len(key))
+	}
+
+	// Test with same inputs should produce same key
+	key2, err := manager.DeriveKey(password, salt)
+	if err != nil {
+		t.Fatalf("Failed to derive key second time: %v", err)
+	}
+
+	if !bytes.Equal(key, key2) {
+		t.Error("Same password and salt should produce same derived key")
+	}
+
+	// Different password should produce different key
+	key3, err := manager.DeriveKey([]byte("different_password"), salt)
+	if err != nil {
+		t.Fatalf("Failed to derive key with different password: %v", err)
+	}
+
+	if bytes.Equal(key, key3) {
+		t.Error("Different passwords should produce different derived keys")
+	}
+}
+
+func TestGetDatabaseKeyBytes(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	// Generate and set master key
+	masterKey, err := manager.GenerateMasterKey()
+	if err != nil {
+		t.Fatalf("Failed to generate master key: %v", err)
+	}
+	manager.SetMasterKey(masterKey)
+
+	// Get database key bytes
+	keyBytes, err := manager.GetDatabaseKeyBytes()
+	if err != nil {
+		t.Fatalf("Failed to get database key bytes: %v", err)
+	}
+
+	if len(keyBytes) != 32 {
+		t.Errorf("Expected database key length 32, got %d", len(keyBytes))
+	}
+
+	// Test multiple calls return same key
+	keyBytes2, err := manager.GetDatabaseKeyBytes()
+	if err != nil {
+		t.Fatalf("Failed to get database key bytes second time: %v", err)
+	}
+
+	if !bytes.Equal(keyBytes, keyBytes2) {
+		t.Error("Multiple calls should return same database key bytes")
+	}
+
+	// Test with unlocked manager
+	manager.Cleanup()
+	_, err = manager.GetDatabaseKeyBytes()
+	if err == nil {
+		t.Error("Expected error when getting database key bytes from unlocked manager")
+	}
+}
+
+func TestSecureStorageErrorHandling(t *testing.T) {
+	tempDir := t.TempDir()
+	manager, err := NewManager(tempDir)
+	if err != nil {
+		t.Fatalf("Failed to create security manager: %v", err)
+	}
+
+	// Test storing with invalid directory permissions (simulate error)
+	// This is a bit tricky to test portably, so we'll test other error paths
+
+	// Test with unlocked manager for file fallback
+	err = manager.secureFileStore("test", "value")
+	if err == nil {
+		t.Error("Expected error when using file store without unlocked manager")
+	}
+
+	// Test invalid hex in LoadMasterKey by directly manipulating storage
+	// First, set up a master key for testing
+	masterKey, _ := manager.GenerateMasterKey()
+	manager.SetMasterKey(masterKey)
+
+	// Store invalid hex data
+	err = manager.SecureStore(MasterKeyName, "invalid_hex_data")
+	if err != nil {
+		t.Fatalf("Failed to store invalid hex: %v", err)
+	}
+
+	// Try to load - should fail
+	_, err = manager.LoadMasterKey()
+	if err == nil {
+		t.Error("Expected error when loading invalid hex master key")
+	}
+
+	// Clean up
+	manager.SecureDelete(MasterKeyName)
+}

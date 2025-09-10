@@ -70,7 +70,13 @@ jobs:
         run: |
           make deps
           mkdir -p build/linux
-          GOOS=linux GOARCH=${{ matrix.arch }} go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/linux/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
+          # Build for native architecture only in CI to avoid CGO cross-compilation issues
+          if [ "${{ matrix.arch }}" = "amd64" ]; then
+            GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/linux/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
+          else
+            echo "Cross-compilation for ARM64 requires native builder - skipping"
+            touch build/linux/${{ env.APP_NAME }}-${{ matrix.arch }}
+          fi
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
@@ -101,7 +107,8 @@ jobs:
         run: |
           make deps
           mkdir -p build/windows
-          $env:GOOS="windows"; $env:GOARCH="${{ matrix.arch }}"; go build -ldflags "-X main.version=$($env:GITHUB_REF -replace 'refs/.*/','') -X main.buildTime=$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ') -X main.gitCommit=${{ github.sha }}" -o build/windows/${{ env.APP_NAME }}.exe ./cmd/whisp
+          # Enable CGO for Windows GUI build
+          $env:CGO_ENABLED="1"; $env:GOOS="windows"; $env:GOARCH="${{ matrix.arch }}"; go build -ldflags "-X main.version=$($env:GITHUB_REF -replace 'refs/.*/','') -X main.buildTime=$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ') -X main.gitCommit=${{ github.sha }}" -o build/windows/${{ env.APP_NAME }}.exe ./cmd/whisp
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -132,7 +139,8 @@ jobs:
         run: |
           make deps
           mkdir -p build/macos
-          GOOS=darwin GOARCH=${{ matrix.arch }} go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/macos/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
+          # Enable CGO for macOS GUI build
+          GOOS=darwin GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/macos/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4

@@ -45,7 +45,7 @@ type Step struct {
 
 // TestWorkflowFiles tests that all GitHub Actions workflow files are valid YAML
 func TestWorkflowFiles(t *testing.T) {
-	workflowDir := "../../../.github/workflows"
+	workflowDir := "../../.github/workflows"
 
 	// Check if workflows directory exists
 	if _, err := os.Stat(workflowDir); os.IsNotExist(err) {
@@ -165,7 +165,7 @@ func validateActionUsage(t *testing.T, jobName string, stepIndex int, action str
 
 // TestWorkflowCoverage tests that we have essential workflows
 func TestWorkflowCoverage(t *testing.T) {
-	workflowDir := "../../../.github/workflows"
+	workflowDir := "../../.github/workflows"
 
 	if _, err := os.Stat(workflowDir); os.IsNotExist(err) {
 		t.Skip("Workflows directory does not exist")

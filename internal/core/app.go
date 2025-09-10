@@ -347,7 +347,7 @@ func (a *App) StartVoiceRecordingFromUI(friendID uint32, outputDir string) (audi
 
 // SendVoiceMessageFromUI sends a completed voice recording as a message
 func (a *App) SendVoiceMessageFromUI(friendID uint32, voiceMsg *audio.VoiceMessage) error {
-	log.Printf("Sending voice message from UI: friend=%d, file=%s, duration=%v", 
+	log.Printf("Sending voice message from UI: friend=%d, file=%s, duration=%v",
 		friendID, voiceMsg.FilePath, voiceMsg.Duration)
 
 	// Create voice message in database

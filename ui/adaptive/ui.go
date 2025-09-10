@@ -14,6 +14,7 @@ import (
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/ui/shared"
+	"github.com/opd-ai/whisp/ui/theme"
 )
 
 // UI manages the adaptive user interface

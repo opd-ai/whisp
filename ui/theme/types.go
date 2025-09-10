@@ -13,6 +13,19 @@ type SerializableColor struct {
 	R, G, B, A uint8
 }
 
+// RGBA implements the color.Color interface
+func (c SerializableColor) RGBA() (r, g, b, a uint32) {
+	r = uint32(c.R)
+	r |= r << 8
+	g = uint32(c.G)
+	g |= g << 8
+	b = uint32(c.B)
+	b |= b << 8
+	a = uint32(c.A)
+	a |= a << 8
+	return
+}
+
 // MarshalJSON implements json.Marshaler
 func (c SerializableColor) MarshalJSON() ([]byte, error) {
 	return json.Marshal(map[string]uint8{
@@ -29,9 +42,9 @@ func (c *SerializableColor) UnmarshalJSON(data []byte) error {
 	if err := json.Unmarshal(data, &rgba); err != nil {
 		return err
 	}
-
+	
 	c.R = rgba["r"]
-	c.G = rgba["g"]
+	c.G = rgba["g"] 
 	c.B = rgba["b"]
 	c.A = rgba["a"]
 	return nil
@@ -45,9 +58,7 @@ func (c SerializableColor) ToNRGBA() color.NRGBA {
 // ToColor converts to color.Color interface
 func (c SerializableColor) ToColor() color.Color {
 	return c.ToNRGBA()
-}
-
-// NewSerializableColor creates a SerializableColor from color.Color
+}// NewSerializableColor creates a SerializableColor from color.Color
 func NewSerializableColor(c color.Color) SerializableColor {
 	if nrgba, ok := c.(color.NRGBA); ok {
 		return SerializableColor{R: nrgba.R, G: nrgba.G, B: nrgba.B, A: nrgba.A}

@@ -54,29 +54,29 @@ func (t *WhispTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) 
 	switch name {
 	// Primary colors
 	case theme.ColorNamePrimary:
-		return t.scheme.Primary.ToColor()
+		return t.scheme.Primary
 	case theme.ColorNameBackground:
-		return t.scheme.Background.ToColor()
+		return t.scheme.Background
 	case theme.ColorNameForeground:
-		return t.scheme.OnBackground.ToColor()
+		return t.scheme.OnBackground
 
 	// Surface colors
 	case theme.ColorNameButton:
-		return t.scheme.Surface.ToColor()
+		return t.scheme.Surface
 	case theme.ColorNameDisabledButton:
-		return t.scheme.Disabled.ToColor()
+		return t.scheme.Disabled
 	case theme.ColorNameMenuBackground:
-		return t.scheme.Surface.ToColor()
+		return t.scheme.Surface
 	case theme.ColorNameOverlayBackground:
-		return t.scheme.SurfaceVariant.ToColor()
+		return t.scheme.SurfaceVariant
 
 	// Text colors
 	case theme.ColorNameDisabled:
-		return t.scheme.Disabled.ToColor()
+		return t.scheme.Disabled
 	case theme.ColorNameError:
-		return t.scheme.Error.ToColor()
+		return t.scheme.Error
 	case theme.ColorNameFocus:
-		return t.scheme.Primary.ToColor()
+		return t.scheme.Primary
 	case theme.ColorNameHover:
 		return t.scheme.Highlight.ToColor()
 	case theme.ColorNamePlaceHolder:

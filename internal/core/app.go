@@ -12,6 +12,7 @@ import (
 	"github.com/opd-ai/whisp/internal/core/audio"
 	configpkg "github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
+	"github.com/opd-ai/whisp/internal/core/media"
 	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/internal/core/security"
 	"github.com/opd-ai/whisp/internal/core/tox"
@@ -39,6 +40,7 @@ type App struct {
 	security      *security.Manager
 	transfers     *transfer.Manager
 	audio         audio.Manager
+	media         media.ManagerInterface
 	notifications *NotificationService
 
 	mu       sync.RWMutex
@@ -104,6 +106,10 @@ func NewApp(config *Config) (*App, error) {
 		return nil, fmt.Errorf("failed to initialize audio manager: %w", err)
 	}
 
+	// Initialize media manager for thumbnails and previews
+	mediaCacheDir := filepath.Join(config.DataDir, "media_cache")
+	mediaMgr := media.NewManager(mediaCacheDir)
+
 	app := &App{
 		config:    config,
 		configMgr: configMgr,
@@ -114,6 +120,7 @@ func NewApp(config *Config) (*App, error) {
 		security:  securityMgr,
 		transfers: transferMgr,
 		audio:     audioMgr,
+		media:     mediaMgr,
 		shutdown:  make(chan struct{}),
 	}
 
@@ -404,6 +411,36 @@ func (a *App) GenerateWaveformFromUI(filePath string, points int) ([]float32, er
 
 	generator := a.audio.GetWaveformGenerator()
 	return generator.GenerateWaveformFromFile(filePath, points)
+}
+
+// GetMediaInfoFromUI returns media information for a file
+func (a *App) GetMediaInfoFromUI(filePath string) (*media.MediaInfo, error) {
+	log.Printf("Getting media info from UI: file=%s", filePath)
+
+	return a.media.GetMediaInfo(filePath)
+}
+
+// GenerateThumbnailFromUI creates a thumbnail for a media file
+func (a *App) GenerateThumbnailFromUI(filePath string, maxWidth, maxHeight int) (string, error) {
+	log.Printf("Generating thumbnail from UI: file=%s, size=%dx%d", filePath, maxWidth, maxHeight)
+
+	return a.media.GenerateThumbnail(filePath, maxWidth, maxHeight)
+}
+
+// IsMediaFileFromUI checks if a file is a supported media type
+func (a *App) IsMediaFileFromUI(filePath string) bool {
+	return a.media.IsMediaFile(filePath)
+}
+
+// GetThumbnailPathFromUI returns the cached thumbnail path if it exists
+func (a *App) GetThumbnailPathFromUI(filePath string, maxWidth, maxHeight int) (string, bool) {
+	return a.media.GetThumbnailPath(filePath, maxWidth, maxHeight)
+}
+
+// CleanupMediaCacheFromUI removes cached thumbnails
+func (a *App) CleanupMediaCacheFromUI() error {
+	log.Printf("Cleaning up media cache from UI")
+	return a.media.Cleanup()
 }
 
 // mainLoop runs the main application loop

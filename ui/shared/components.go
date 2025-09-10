@@ -10,6 +10,7 @@ import (
 
 	"github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
+	"github.com/opd-ai/whisp/internal/core/media"
 	"github.com/opd-ai/whisp/internal/core/message"
 )
 
@@ -21,6 +22,12 @@ type CoreApp interface {
 	GetMessages() *message.Manager
 	GetContacts() *contact.Manager
 	GetConfigManager() *config.Manager
+	
+	// Media-related methods
+	GetMediaInfoFromUI(filePath string) (*media.MediaInfo, error)
+	GenerateThumbnailFromUI(filePath string, maxWidth, maxHeight int) (string, error)
+	IsMediaFileFromUI(filePath string) bool
+	GetThumbnailPathFromUI(filePath string, maxWidth, maxHeight int) (string, bool)
 }
 
 // ChatView represents the chat interface
@@ -321,4 +328,199 @@ func (cl *ContactList) showErrorDialog(message string) {
 		cl.parentWindow.Canvas(),
 	)
 	errorPopup.Show()
+}
+
+// MediaPreview represents a media preview widget for displaying image/video thumbnails
+type MediaPreview struct {
+	container    *fyne.Container
+	image        *widget.Card
+	videoIcon    *widget.Card
+	mediaInfo    *media.MediaInfo
+	thumbnailPath string
+	coreApp      CoreApp
+}
+
+// NewMediaPreview creates a new media preview for a file
+func NewMediaPreview(coreApp CoreApp, filePath string, maxWidth, maxHeight int) *MediaPreview {
+	mp := &MediaPreview{
+		coreApp: coreApp,
+	}
+
+	mp.initializePreview(filePath, maxWidth, maxHeight)
+	return mp
+}
+
+// initializePreview sets up the media preview based on file type
+func (mp *MediaPreview) initializePreview(filePath string, maxWidth, maxHeight int) {
+	// Check if file is a media file
+	if !mp.coreApp.IsMediaFileFromUI(filePath) {
+		mp.createNonMediaPreview(filePath)
+		return
+	}
+
+	// Get media info
+	mediaInfo, err := mp.coreApp.GetMediaInfoFromUI(filePath)
+	if err != nil {
+		log.Printf("Failed to get media info for %s: %v", filePath, err)
+		mp.createErrorPreview(filePath, err)
+		return
+	}
+
+	mp.mediaInfo = mediaInfo
+
+	// Generate or get cached thumbnail
+	thumbnailPath, hasCached := mp.coreApp.GetThumbnailPathFromUI(filePath, maxWidth, maxHeight)
+	if !hasCached {
+		// Generate thumbnail
+		var err error
+		thumbnailPath, err = mp.coreApp.GenerateThumbnailFromUI(filePath, maxWidth, maxHeight)
+		if err != nil {
+			log.Printf("Failed to generate thumbnail for %s: %v", filePath, err)
+			mp.createErrorPreview(filePath, err)
+			return
+		}
+	}
+
+	mp.thumbnailPath = thumbnailPath
+
+	// Create preview based on media type
+	switch mediaInfo.Type {
+	case media.MediaTypeImage:
+		mp.createImagePreview(filePath)
+	case media.MediaTypeVideo:
+		mp.createVideoPreview(filePath)
+	default:
+		mp.createGenericMediaPreview(filePath)
+	}
+}
+
+// createImagePreview creates a preview for image files
+func (mp *MediaPreview) createImagePreview(filePath string) {
+	// Create image card with thumbnail
+	title := fmt.Sprintf("Image (%dx%d)", mp.mediaInfo.Width, mp.mediaInfo.Height)
+	subtitle := mp.formatFileSize(mp.mediaInfo.Size)
+
+	mp.image = widget.NewCard(title, subtitle, nil)
+	
+	// TODO: In a full implementation, load the actual thumbnail image
+	// For now, show a placeholder with image info
+	content := widget.NewLabel(fmt.Sprintf("📷 %s", title))
+	content.Alignment = fyne.TextAlignCenter
+	
+	mp.image.SetContent(content)
+	mp.container = container.NewVBox(mp.image)
+}
+
+// createVideoPreview creates a preview for video files
+func (mp *MediaPreview) createVideoPreview(filePath string) {
+	// Create video card with thumbnail
+	title := "Video"
+	if mp.mediaInfo.Duration > 0 {
+		title = fmt.Sprintf("Video (%s)", mp.formatDuration(mp.mediaInfo.Duration))
+	}
+	subtitle := mp.formatFileSize(mp.mediaInfo.Size)
+
+	mp.videoIcon = widget.NewCard(title, subtitle, nil)
+	
+	// Show video icon placeholder
+	content := widget.NewLabel("🎬 " + title)
+	content.Alignment = fyne.TextAlignCenter
+	
+	mp.videoIcon.SetContent(content)
+	mp.container = container.NewVBox(mp.videoIcon)
+}
+
+// createGenericMediaPreview creates a preview for other media types
+func (mp *MediaPreview) createGenericMediaPreview(filePath string) {
+	title := fmt.Sprintf("%s File", mp.mediaInfo.Type.String())
+	subtitle := mp.formatFileSize(mp.mediaInfo.Size)
+
+	card := widget.NewCard(title, subtitle, nil)
+	
+	// Show generic media icon
+	var icon string
+	switch mp.mediaInfo.Type {
+	case media.MediaTypeAudio:
+		icon = "🎵"
+	default:
+		icon = "📄"
+	}
+	
+	content := widget.NewLabel(icon + " " + title)
+	content.Alignment = fyne.TextAlignCenter
+	
+	card.SetContent(content)
+	mp.container = container.NewVBox(card)
+}
+
+// createNonMediaPreview creates a preview for non-media files
+func (mp *MediaPreview) createNonMediaPreview(filePath string) {
+	title := "File"
+	subtitle := "Non-media file"
+
+	card := widget.NewCard(title, subtitle, nil)
+	
+	content := widget.NewLabel("📎 " + title)
+	content.Alignment = fyne.TextAlignCenter
+	
+	card.SetContent(content)
+	mp.container = container.NewVBox(card)
+}
+
+// createErrorPreview creates a preview when there's an error
+func (mp *MediaPreview) createErrorPreview(filePath string, err error) {
+	title := "Error"
+	subtitle := "Failed to load preview"
+
+	card := widget.NewCard(title, subtitle, nil)
+	
+	content := widget.NewLabel("❌ " + title)
+	content.Alignment = fyne.TextAlignCenter
+	
+	card.SetContent(content)
+	mp.container = container.NewVBox(card)
+}
+
+// formatFileSize formats file size in human-readable format
+func (mp *MediaPreview) formatFileSize(size int64) string {
+	const unit = 1024
+	if size < unit {
+		return fmt.Sprintf("%d B", size)
+	}
+	div, exp := int64(unit), 0
+	for n := size / unit; n >= unit; n /= unit {
+		div *= unit
+		exp++
+	}
+	return fmt.Sprintf("%.1f %cB", float64(size)/float64(div), "KMGTPE"[exp])
+}
+
+// formatDuration formats duration in human-readable format
+func (mp *MediaPreview) formatDuration(seconds int) string {
+	if seconds < 60 {
+		return fmt.Sprintf("%ds", seconds)
+	}
+	minutes := seconds / 60
+	remainingSeconds := seconds % 60
+	if minutes < 60 {
+		return fmt.Sprintf("%dm %ds", minutes, remainingSeconds)
+	}
+	hours := minutes / 60
+	remainingMinutes := minutes % 60
+	return fmt.Sprintf("%dh %dm", hours, remainingMinutes)
+}
+
+// Container returns the media preview container
+func (mp *MediaPreview) Container() *fyne.Container {
+	return mp.container
+}
+
+// GetMediaInfo returns the media information
+func (mp *MediaPreview) GetMediaInfo() *media.MediaInfo {
+	return mp.mediaInfo
+}
+
+// GetThumbnailPath returns the thumbnail file path
+func (mp *MediaPreview) GetThumbnailPath() string {
+	return mp.thumbnailPath
 }

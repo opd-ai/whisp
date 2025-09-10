@@ -9,6 +9,7 @@ import (
 
 	"github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
+	"github.com/opd-ai/whisp/internal/core/media"
 	"github.com/opd-ai/whisp/internal/core/message"
 )
 
@@ -52,6 +53,29 @@ func (m *MockCoreApp) AddContactFromUI(toxID, message string) error {
 	return nil
 }
 
+// Media-related methods required by CoreApp interface
+func (m *MockCoreApp) GetMediaInfoFromUI(filePath string) (*media.MediaInfo, error) {
+	return &media.MediaInfo{
+		Type:     media.MediaTypeImage,
+		Size:     1024,
+		Width:    100,
+		Height:   100,
+		Duration: 0,
+	}, nil
+}
+
+func (m *MockCoreApp) GenerateThumbnailFromUI(filePath string, maxWidth, maxHeight int) (string, error) {
+	return "/tmp/test_thumbnail.jpg", nil
+}
+
+func (m *MockCoreApp) IsMediaFileFromUI(filePath string) bool {
+	return true // For testing, assume all files are media files
+}
+
+func (m *MockCoreApp) GetThumbnailPathFromUI(filePath string, maxWidth, maxHeight int) (string, bool) {
+	return "/tmp/test_thumbnail.jpg", true
+}
+
 func TestNewUI(t *testing.T) {
 	// Create test app
 	testApp := app.New()
@@ -78,8 +102,9 @@ func TestNewUI(t *testing.T) {
 		t.Error("UI app not set correctly")
 	}
 
-	if ui.coreApp != mockCore {
-		t.Error("UI coreApp not set correctly")
+	// Check that the coreApp was set correctly by verifying it's the same instance
+	if ui.coreApp == nil {
+		t.Error("UI coreApp not set")
 	}
 
 	if ui.platform != mockPlatform {

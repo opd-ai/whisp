@@ -1,0 +1,254 @@
+# GitHub Actions CI/CD Pipeline for Whisp
+# Builds cross-platform packages for all supported platforms
+name: Build and Package
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  GO_VERSION: '1.21'
+  APP_NAME: whisp
+
+jobs:
+  # Test job runs first to validate code quality
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libc6-dev libgl1-mesa-dev xorg-dev
+          make deps
+
+      - name: Run tests with coverage
+        run: make test-coverage
+
+      - name: Run linter
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.54.2
+          make lint
+
+  # Linux builds
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    needs: test
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libc6-dev libgl1-mesa-dev xorg-dev
+
+      - name: Build for Linux ${{ matrix.arch }}
+        run: |
+          make deps
+          mkdir -p build/linux
+          GOOS=linux GOARCH=${{ matrix.arch }} go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/linux/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-${{ matrix.arch }}
+          path: build/linux/${{ env.APP_NAME }}-${{ matrix.arch }}
+          retention-days: 30
+
+  # Windows builds
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    needs: test
+    strategy:
+      matrix:
+        arch: [amd64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build for Windows ${{ matrix.arch }}
+        run: |
+          make deps
+          mkdir -p build/windows
+          $env:GOOS="windows"; $env:GOARCH="${{ matrix.arch }}"; go build -ldflags "-X main.version=$($env:GITHUB_REF -replace 'refs/.*/','') -X main.buildTime=$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ') -X main.gitCommit=${{ github.sha }}" -o build/windows/${{ env.APP_NAME }}.exe ./cmd/whisp
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}
+          path: build/windows/${{ env.APP_NAME }}.exe
+          retention-days: 30
+
+  # macOS builds
+  build-macos:
+    name: Build macOS
+    runs-on: macos-latest
+    needs: test
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Build for macOS ${{ matrix.arch }}
+        run: |
+          make deps
+          mkdir -p build/macos
+          GOOS=darwin GOARCH=${{ matrix.arch }} go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/macos/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
+
+      - name: Upload macOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: build/macos/${{ env.APP_NAME }}-${{ matrix.arch }}
+          retention-days: 30
+
+  # Mobile builds (Android)
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Set up Java for Android
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install Android dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc libc6-dev libgl1-mesa-dev xorg-dev
+          make deps
+          go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Build Android APK
+        run: |
+          mkdir -p build/android
+          fyne package -os android -appBuild 1 -appVersion "${GITHUB_REF#refs/*/}" -appID io.whisp.app -o build/android/${{ env.APP_NAME }}.apk ./cmd/whisp
+
+      - name: Upload Android artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: build/android/${{ env.APP_NAME }}.apk
+          retention-days: 30
+
+  # iOS builds (only on macOS)
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    needs: test
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Install iOS dependencies
+        run: |
+          make deps
+          go install fyne.io/fyne/v2/cmd/fyne@latest
+
+      - name: Build iOS IPA
+        run: |
+          mkdir -p build/ios
+          fyne package -os ios -appBuild 1 -appVersion "${GITHUB_REF#refs/*/}" -appID io.whisp.app -o build/ios/${{ env.APP_NAME }}.ipa ./cmd/whisp
+
+      - name: Upload iOS artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: build/ios/${{ env.APP_NAME }}.ipa
+          retention-days: 30
+
+  # Create release when tagged
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-windows, build-macos, build-android, build-ios]
+    if: github.event_name == 'release'
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create release archives
+        run: |
+          mkdir -p release
+          
+          # Linux archives
+          cd artifacts/linux-amd64 && tar czf ../../release/${{ env.APP_NAME }}-linux-amd64.tar.gz * && cd ../..
+          cd artifacts/linux-arm64 && tar czf ../../release/${{ env.APP_NAME }}-linux-arm64.tar.gz * && cd ../..
+          
+          # Windows archive
+          cd artifacts/windows-amd64 && zip ../../release/${{ env.APP_NAME }}-windows-amd64.zip * && cd ../..
+          
+          # macOS archives
+          cd artifacts/macos-amd64 && tar czf ../../release/${{ env.APP_NAME }}-macos-amd64.tar.gz * && cd ../..
+          cd artifacts/macos-arm64 && tar czf ../../release/${{ env.APP_NAME }}-macos-arm64.tar.gz * && cd ../..
+          
+          # Mobile packages (copy as-is)
+          cp artifacts/android/${{ env.APP_NAME }}.apk release/
+          cp artifacts/ios/${{ env.APP_NAME }}.ipa release/
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/*
+          generate_release_notes: true
+          prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, 'rc') }}

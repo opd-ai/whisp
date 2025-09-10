@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"image/color"
 	"log"
 	"os"
 	"path/filepath"
@@ -77,25 +76,25 @@ func main() {
 		Name:        "Ocean Blue",
 		Description: "A soothing blue theme",
 		ColorScheme: theme.ColorScheme{
-			Primary:        color.NRGBA{R: 33, G: 150, B: 243, A: 255},  // Blue
-			Secondary:      color.NRGBA{R: 0, G: 188, B: 212, A: 255},   // Cyan
-			Background:     color.NRGBA{R: 250, G: 250, B: 250, A: 255}, // Light gray
-			Surface:        color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			OnPrimary:      color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			OnSecondary:    color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			OnBackground:   color.NRGBA{R: 33, G: 33, B: 33, A: 255},    // Dark gray
-			OnSurface:      color.NRGBA{R: 33, G: 33, B: 33, A: 255},    // Dark gray
-			OnError:        color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			Success:        color.NRGBA{R: 76, G: 175, B: 80, A: 255},   // Green
-			Warning:        color.NRGBA{R: 255, G: 152, B: 0, A: 255},   // Orange
-			Error:          color.NRGBA{R: 244, G: 67, B: 54, A: 255},   // Red
-			Info:           color.NRGBA{R: 33, G: 150, B: 243, A: 255},  // Blue
-			Disabled:       color.NRGBA{R: 158, G: 158, B: 158, A: 255}, // Gray
-			Highlight:      color.NRGBA{R: 227, G: 242, B: 253, A: 255}, // Light blue
-			Border:         color.NRGBA{R: 224, G: 224, B: 224, A: 255}, // Light gray
-			Divider:        color.NRGBA{R: 238, G: 238, B: 238, A: 255}, // Very light gray
-			Shadow:         color.NRGBA{R: 0, G: 0, B: 0, A: 51},        // Transparent black
-			SurfaceVariant: color.NRGBA{R: 245, G: 245, B: 245, A: 255}, // Very light gray
+			Primary:        theme.NewSerializableColorFromRGBA(33, 150, 243, 255),  // Blue
+			Secondary:      theme.NewSerializableColorFromRGBA(0, 188, 212, 255),   // Cyan
+			Background:     theme.NewSerializableColorFromRGBA(250, 250, 250, 255), // Light gray
+			Surface:        theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			OnPrimary:      theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			OnSecondary:    theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			OnBackground:   theme.NewSerializableColorFromRGBA(33, 33, 33, 255),    // Dark gray
+			OnSurface:      theme.NewSerializableColorFromRGBA(33, 33, 33, 255),    // Dark gray
+			OnError:        theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			Success:        theme.NewSerializableColorFromRGBA(76, 175, 80, 255),   // Green
+			Warning:        theme.NewSerializableColorFromRGBA(255, 152, 0, 255),   // Orange
+			Error:          theme.NewSerializableColorFromRGBA(244, 67, 54, 255),   // Red
+			Info:           theme.NewSerializableColorFromRGBA(33, 150, 243, 255),  // Blue
+			Disabled:       theme.NewSerializableColorFromRGBA(158, 158, 158, 255), // Gray
+			Highlight:      theme.NewSerializableColorFromRGBA(227, 242, 253, 255), // Light blue
+			Border:         theme.NewSerializableColorFromRGBA(224, 224, 224, 255), // Light gray
+			Divider:        theme.NewSerializableColorFromRGBA(238, 238, 238, 255), // Very light gray
+			Shadow:         theme.NewSerializableColorFromRGBA(0, 0, 0, 51),        // Transparent black
+			SurfaceVariant: theme.NewSerializableColorFromRGBA(245, 245, 245, 255), // Very light gray
 		},
 	}
 
@@ -110,25 +109,25 @@ func main() {
 		Name:        "Midnight Dark",
 		Description: "A deep dark theme",
 		ColorScheme: theme.ColorScheme{
-			Primary:        color.NRGBA{R: 156, G: 39, B: 176, A: 255},  // Purple
-			Secondary:      color.NRGBA{R: 233, G: 30, B: 99, A: 255},   // Pink
-			Background:     color.NRGBA{R: 18, G: 18, B: 18, A: 255},    // Very dark
-			Surface:        color.NRGBA{R: 33, G: 33, B: 33, A: 255},    // Dark gray
-			OnPrimary:      color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			OnSecondary:    color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			OnBackground:   color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			OnSurface:      color.NRGBA{R: 255, G: 255, B: 255, A: 255}, // White
-			OnError:        color.NRGBA{R: 0, G: 0, B: 0, A: 255},       // Black
-			Success:        color.NRGBA{R: 76, G: 175, B: 80, A: 255},   // Green
-			Warning:        color.NRGBA{R: 255, G: 152, B: 0, A: 255},   // Orange
-			Error:          color.NRGBA{R: 244, G: 67, B: 54, A: 255},   // Red
-			Info:           color.NRGBA{R: 33, G: 150, B: 243, A: 255},  // Blue
-			Disabled:       color.NRGBA{R: 97, G: 97, B: 97, A: 255},    // Gray
-			Highlight:      color.NRGBA{R: 48, G: 48, B: 48, A: 255},    // Dark gray
-			Border:         color.NRGBA{R: 66, G: 66, B: 66, A: 255},    // Medium gray
-			Divider:        color.NRGBA{R: 48, G: 48, B: 48, A: 255},    // Dark gray
-			Shadow:         color.NRGBA{R: 0, G: 0, B: 0, A: 102},       // Transparent black
-			SurfaceVariant: color.NRGBA{R: 28, G: 28, B: 28, A: 255},    // Very dark gray
+			Primary:        theme.NewSerializableColorFromRGBA(156, 39, 176, 255),  // Purple
+			Secondary:      theme.NewSerializableColorFromRGBA(233, 30, 99, 255),   // Pink
+			Background:     theme.NewSerializableColorFromRGBA(18, 18, 18, 255),    // Very dark
+			Surface:        theme.NewSerializableColorFromRGBA(33, 33, 33, 255),    // Dark gray
+			OnPrimary:      theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			OnSecondary:    theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			OnBackground:   theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			OnSurface:      theme.NewSerializableColorFromRGBA(255, 255, 255, 255), // White
+			OnError:        theme.NewSerializableColorFromRGBA(0, 0, 0, 255),       // Black
+			Success:        theme.NewSerializableColorFromRGBA(76, 175, 80, 255),   // Green
+			Warning:        theme.NewSerializableColorFromRGBA(255, 152, 0, 255),   // Orange
+			Error:          theme.NewSerializableColorFromRGBA(244, 67, 54, 255),   // Red
+			Info:           theme.NewSerializableColorFromRGBA(33, 150, 243, 255),  // Blue
+			Disabled:       theme.NewSerializableColorFromRGBA(97, 97, 97, 255),    // Gray
+			Highlight:      theme.NewSerializableColorFromRGBA(48, 48, 48, 255),    // Dark gray
+			Border:         theme.NewSerializableColorFromRGBA(66, 66, 66, 255),    // Medium gray
+			Divider:        theme.NewSerializableColorFromRGBA(48, 48, 48, 255),    // Dark gray
+			Shadow:         theme.NewSerializableColorFromRGBA(0, 0, 0, 102),       // Transparent black
+			SurfaceVariant: theme.NewSerializableColorFromRGBA(28, 28, 28, 255),    // Very dark gray
 		},
 	}
 

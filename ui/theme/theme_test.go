@@ -3,6 +3,7 @@ package theme
 import (
 	"image/color"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -363,10 +364,13 @@ func TestThemeManager(t *testing.T) {
 		app := test.NewApp()
 		manager.Initialize(app)
 
+		var mu sync.Mutex
 		callbackCalled := false
 		var callbackTheme ThemeType
 
 		manager.OnThemeChanged(func(themeType ThemeType) {
+			mu.Lock()
+			defer mu.Unlock()
 			callbackCalled = true
 			callbackTheme = themeType
 		})
@@ -380,6 +384,8 @@ func TestThemeManager(t *testing.T) {
 		// Give some time for the callback goroutine
 		time.Sleep(10 * time.Millisecond)
 
+		mu.Lock()
+		defer mu.Unlock()
 		if !callbackCalled {
 			t.Error("Theme change callback should have been called")
 		}

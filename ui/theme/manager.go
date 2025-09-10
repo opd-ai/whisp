@@ -79,7 +79,6 @@ func (tm *DefaultThemeManager) GetCurrentTheme() fyne.Theme {
 // SetTheme sets the theme type
 func (tm *DefaultThemeManager) SetTheme(themeType ThemeType) error {
 	tm.mu.Lock()
-	defer tm.mu.Unlock()
 
 	oldTheme := tm.currentThemeType
 	tm.currentThemeType = themeType
@@ -89,6 +88,7 @@ func (tm *DefaultThemeManager) SetTheme(themeType ThemeType) error {
 		// Revert on error
 		tm.currentThemeType = oldTheme
 		tm.preferences.ThemeType = oldTheme
+		tm.mu.Unlock()
 		return fmt.Errorf("failed to update theme: %w", err)
 	}
 
@@ -103,8 +103,15 @@ func (tm *DefaultThemeManager) SetTheme(themeType ThemeType) error {
 		fmt.Printf("Warning: failed to save theme preferences: %v\n", err)
 	}
 
-	// Notify callbacks
-	tm.notifyThemeChange(oldTheme, themeType, "user")
+	// Copy callbacks while holding the lock to avoid race conditions
+	callbacks := make([]func(ThemeType), len(tm.changeCallbacks))
+	copy(callbacks, tm.changeCallbacks)
+
+	// Release lock before notifying to avoid blocking
+	tm.mu.Unlock()
+
+	// Notify callbacks without holding the lock
+	tm.notifyThemeChangeWithCallbacks(callbacks, themeType)
 
 	return nil
 }
@@ -225,24 +232,36 @@ func (tm *DefaultThemeManager) DetectSystemTheme() ThemeType {
 // EnableSystemThemeFollowing enables or disables system theme following
 func (tm *DefaultThemeManager) EnableSystemThemeFollowing(enabled bool) {
 	tm.mu.Lock()
-	defer tm.mu.Unlock()
 
 	tm.preferences.FollowSystemTheme = enabled
 
 	// If enabled and current theme is system, update to actual system theme
+	needsNotification := false
+	var callbacks []func(ThemeType)
+	currentThemeType := tm.currentThemeType
+
 	if enabled && tm.currentThemeType == ThemeSystem {
 		systemTheme := tm.systemDetector.DetectSystemTheme()
 		if systemTheme != tm.currentThemeType {
-			oldTheme := tm.currentThemeType
 			tm.updateCurrentTheme()
 			if tm.app != nil {
 				tm.app.Settings().SetTheme(tm.currentTheme)
 			}
-			tm.notifyThemeChange(oldTheme, tm.currentThemeType, "system")
+			// Copy callbacks while holding the lock
+			callbacks = make([]func(ThemeType), len(tm.changeCallbacks))
+			copy(callbacks, tm.changeCallbacks)
+			needsNotification = true
+			currentThemeType = tm.currentThemeType
 		}
 	}
 
 	tm.savePreferences()
+	tm.mu.Unlock()
+
+	// Notify callbacks without holding the lock
+	if needsNotification {
+		tm.notifyThemeChangeWithCallbacks(callbacks, currentThemeType)
+	}
 }
 
 // EnableAutoSwitch enables or disables automatic theme switching
@@ -266,9 +285,9 @@ func (tm *DefaultThemeManager) EnableAutoSwitch(enabled bool, lightStart, darkSt
 // CheckAutoSwitch checks if theme should be switched based on time
 func (tm *DefaultThemeManager) CheckAutoSwitch() {
 	tm.mu.Lock()
-	defer tm.mu.Unlock()
 
 	if !tm.preferences.AutoSwitchEnabled {
+		tm.mu.Unlock()
 		return
 	}
 
@@ -305,14 +324,26 @@ func (tm *DefaultThemeManager) CheckAutoSwitch() {
 	}
 
 	// Switch theme if needed
+	var callbacks []func(ThemeType)
+	needsNotification := false
+
 	if targetTheme != tm.currentThemeType {
-		oldTheme := tm.currentThemeType
 		tm.currentThemeType = targetTheme
 		tm.updateCurrentTheme()
 		if tm.app != nil {
 			tm.app.Settings().SetTheme(tm.currentTheme)
 		}
-		tm.notifyThemeChange(oldTheme, targetTheme, "auto_switch")
+		// Copy callbacks while holding the lock
+		callbacks = make([]func(ThemeType), len(tm.changeCallbacks))
+		copy(callbacks, tm.changeCallbacks)
+		needsNotification = true
+	}
+
+	tm.mu.Unlock()
+
+	// Notify callbacks without holding the lock
+	if needsNotification {
+		tm.notifyThemeChangeWithCallbacks(callbacks, targetTheme)
 	}
 }
 
@@ -326,7 +357,6 @@ func (tm *DefaultThemeManager) GetPreferences() ThemePreferences {
 // SetPreferences sets theme preferences
 func (tm *DefaultThemeManager) SetPreferences(prefs ThemePreferences) error {
 	tm.mu.Lock()
-	defer tm.mu.Unlock()
 
 	oldTheme := tm.currentThemeType
 	tm.preferences = prefs
@@ -334,6 +364,7 @@ func (tm *DefaultThemeManager) SetPreferences(prefs ThemePreferences) error {
 
 	if err := tm.updateCurrentTheme(); err != nil {
 		tm.currentThemeType = oldTheme
+		tm.mu.Unlock()
 		return fmt.Errorf("failed to apply new preferences: %w", err)
 	}
 
@@ -348,9 +379,20 @@ func (tm *DefaultThemeManager) SetPreferences(prefs ThemePreferences) error {
 		tm.stopAutoSwitchTimer()
 	}
 
-	tm.notifyThemeChange(oldTheme, tm.currentThemeType, "preferences")
+	// Copy callbacks while holding the lock to avoid race conditions
+	callbacks := make([]func(ThemeType), len(tm.changeCallbacks))
+	copy(callbacks, tm.changeCallbacks)
 
-	return tm.savePreferences()
+	// Save preferences before releasing lock
+	saveErr := tm.savePreferences()
+	
+	// Release lock before notifying to avoid blocking
+	tm.mu.Unlock()
+
+	// Notify callbacks without holding the lock
+	tm.notifyThemeChangeWithCallbacks(callbacks, tm.currentThemeType)
+
+	return saveErr
 }
 
 // ApplyTheme applies the current theme to the app
@@ -421,7 +463,19 @@ func (tm *DefaultThemeManager) applyThemeBasedOnPreferences() error {
 }
 
 func (tm *DefaultThemeManager) notifyThemeChange(oldTheme, newTheme ThemeType, reason string) {
-	for _, callback := range tm.changeCallbacks {
+	// Copy callbacks under lock to avoid race conditions
+	tm.mu.RLock()
+	callbacks := make([]func(ThemeType), len(tm.changeCallbacks))
+	copy(callbacks, tm.changeCallbacks)
+	tm.mu.RUnlock()
+
+	// Execute callbacks without holding the lock
+	tm.notifyThemeChangeWithCallbacks(callbacks, newTheme)
+}
+
+func (tm *DefaultThemeManager) notifyThemeChangeWithCallbacks(callbacks []func(ThemeType), newTheme ThemeType) {
+	// Execute callbacks without holding any locks
+	for _, callback := range callbacks {
 		go callback(newTheme) // Run callbacks in goroutines to avoid blocking
 	}
 }

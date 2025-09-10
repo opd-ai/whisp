@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/opd-ai/toxcore"
+	"github.com/opd-ai/whisp/internal/core/audio"
 	configpkg "github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
 	"github.com/opd-ai/whisp/internal/core/message"
@@ -37,6 +38,7 @@ type App struct {
 	messages      *message.Manager
 	security      *security.Manager
 	transfers     *transfer.Manager
+	audio         audio.Manager
 	notifications *NotificationService
 
 	mu       sync.RWMutex
@@ -94,6 +96,14 @@ func NewApp(config *Config) (*App, error) {
 	// Connect transfer manager to Tox
 	transferMgr.SetToxManager(toxMgr)
 
+	// Initialize audio manager
+	audioMgr := audio.NewMockManager()
+	if err := audioMgr.Initialize(); err != nil {
+		db.Close()
+		securityMgr.Cleanup()
+		return nil, fmt.Errorf("failed to initialize audio manager: %w", err)
+	}
+
 	app := &App{
 		config:    config,
 		configMgr: configMgr,
@@ -103,6 +113,7 @@ func NewApp(config *Config) (*App, error) {
 		messages:  messageMgr,
 		security:  securityMgr,
 		transfers: transferMgr,
+		audio:     audioMgr,
 		shutdown:  make(chan struct{}),
 	}
 
@@ -178,6 +189,9 @@ func (a *App) Stop() error {
 func (a *App) Cleanup() {
 	if a.notifications != nil {
 		a.notifications.Stop()
+	}
+	if a.audio != nil {
+		a.audio.Shutdown()
 	}
 	if a.tox != nil {
 		a.tox.Cleanup()
@@ -290,6 +304,106 @@ func (a *App) CancelFileFromUI(transferID string) error {
 	log.Printf("Cancelling file transfer from UI: transfer=%s", transferID)
 
 	return a.transfers.CancelTransfer(transferID, a.tox)
+}
+
+// === Voice Message Methods ===
+
+// GetAudioManager returns the audio manager
+func (a *App) GetAudioManager() audio.Manager {
+	a.mu.RLock()
+	defer a.mu.RUnlock()
+	return a.audio
+}
+
+// StartVoiceRecordingFromUI starts voice recording from the UI
+func (a *App) StartVoiceRecordingFromUI(friendID uint32, outputDir string) (audio.Recorder, error) {
+	log.Printf("Starting voice recording from UI: friend=%d, outputDir=%s", friendID, outputDir)
+
+	recorder, err := a.audio.GetRecorder()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recorder: %w", err)
+	}
+
+	if !recorder.IsSupported() {
+		return nil, fmt.Errorf("voice recording not supported on this system")
+	}
+
+	// Create output path
+	outputPath := filepath.Join(outputDir, fmt.Sprintf("voice_%d_%d.wav", friendID, time.Now().Unix()))
+
+	// Configure recording options
+	options := audio.DefaultRecordingOptions()
+	options.OutputPath = outputPath
+	options.MaxDuration = 5 * time.Minute // 5 minute max for voice messages
+
+	// Start recording
+	ctx := context.Background()
+	if err := recorder.Start(ctx, options, nil); err != nil {
+		return nil, fmt.Errorf("failed to start recording: %w", err)
+	}
+
+	return recorder, nil
+}
+
+// SendVoiceMessageFromUI sends a completed voice recording as a message
+func (a *App) SendVoiceMessageFromUI(friendID uint32, voiceMsg *audio.VoiceMessage) error {
+	log.Printf("Sending voice message from UI: friend=%d, file=%s, duration=%v", 
+		friendID, voiceMsg.FilePath, voiceMsg.Duration)
+
+	// Create voice message in database
+	content := fmt.Sprintf("Voice message (%.1fs)", voiceMsg.Duration.Seconds())
+	msg, err := a.messages.SendMessage(friendID, content, message.MessageTypeVoice)
+	if err != nil {
+		return fmt.Errorf("failed to create voice message: %w", err)
+	}
+
+	// Update message with file metadata
+	// Note: In a full implementation, we'd need a method to update message file info
+	log.Printf("Voice message created with ID: %d", msg.ID)
+
+	// Send file through transfer system
+	transferID, err := a.SendFileFromUI(friendID, voiceMsg.FilePath)
+	if err != nil {
+		return fmt.Errorf("failed to send voice file: %w", err)
+	}
+
+	log.Printf("Voice message sent with transfer ID: %s", transferID)
+	return nil
+}
+
+// PlayVoiceMessageFromUI plays a voice message from the UI
+func (a *App) PlayVoiceMessageFromUI(filePath string) (audio.Player, error) {
+	log.Printf("Playing voice message from UI: file=%s", filePath)
+
+	player, err := a.audio.GetPlayer()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get player: %w", err)
+	}
+
+	if !player.IsSupported() {
+		return nil, fmt.Errorf("voice playback not supported on this system")
+	}
+
+	// Load the audio file
+	if err := player.Load(filePath); err != nil {
+		return nil, fmt.Errorf("failed to load audio file: %w", err)
+	}
+
+	// Start playback
+	options := audio.DefaultPlaybackOptions()
+	if err := player.Play(options, nil); err != nil {
+		return nil, fmt.Errorf("failed to start playback: %w", err)
+	}
+
+	return player, nil
+}
+
+// GenerateWaveformFromUI generates waveform data for UI visualization
+func (a *App) GenerateWaveformFromUI(filePath string, points int) ([]float32, error) {
+	log.Printf("Generating waveform from UI: file=%s, points=%d", filePath, points)
+
+	generator := a.audio.GetWaveformGenerator()
+	return generator.GenerateWaveformFromFile(filePath, points)
 }
 
 // mainLoop runs the main application loop

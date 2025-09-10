@@ -71,7 +71,7 @@ func createSampleFiles(tempDir string) []string {
 
 	// Create text file
 	txtPath := filepath.Join(tempDir, "document.txt")
-	err := os.WriteFile(txtPath, []byte("This is a sample text document for testing."), 0644)
+	err := os.WriteFile(txtPath, []byte("This is a sample text document for testing."), 0o644)
 	if err != nil {
 		log.Printf("Failed to create text file: %v", err)
 	} else {
@@ -80,7 +80,7 @@ func createSampleFiles(tempDir string) []string {
 
 	// Create fake video file (just for testing detection)
 	videoPath := filepath.Join(tempDir, "video.mp4")
-	err = os.WriteFile(videoPath, []byte("fake video content"), 0644)
+	err = os.WriteFile(videoPath, []byte("fake video content"), 0o644)
 	if err != nil {
 		log.Printf("Failed to create fake video file: %v", err)
 	} else {

@@ -106,7 +106,7 @@ type VoiceMessage struct {
 type RecordingCallback func(data []float32, level float32)
 
 // PlaybackCallback is called during playback with progress
-type PlaybackCallback func(position time.Duration, duration time.Duration)
+type PlaybackCallback func(position, duration time.Duration)
 
 // Recorder interface for audio recording
 type Recorder interface {

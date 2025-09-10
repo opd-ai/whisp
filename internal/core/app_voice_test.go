@@ -67,7 +67,7 @@ func TestVoiceMessageIntegration(t *testing.T) {
 
 	t.Run("VoiceRecording", func(t *testing.T) {
 		voiceDir := filepath.Join(tempDir, "voice_test")
-		if err := os.MkdirAll(voiceDir, 0755); err != nil {
+		if err := os.MkdirAll(voiceDir, 0o755); err != nil {
 			t.Fatalf("Failed to create voice dir: %v", err)
 		}
 

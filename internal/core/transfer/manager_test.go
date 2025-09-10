@@ -12,63 +12,63 @@ import (
 
 // MockToxManager implements ToxManager for testing
 type MockToxManager struct {
-	fileSendFunc               func(friendID uint32, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error)
-	fileSendChunkFunc          func(friendID uint32, fileID uint32, position uint64, data []byte) error
-	fileControlFunc            func(friendID uint32, fileID uint32, control toxcore.FileControl) error
-	onFileRecvCallback         func(friendID uint32, fileID uint32, kind uint32, fileSize uint64, fileName string)
-	onFileRecvChunkCallback    func(friendID uint32, fileID uint32, position uint64, data []byte)
-	onFileChunkRequestCallback func(friendID uint32, fileID uint32, position uint64, length int)
+	fileSendFunc               func(friendID, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error)
+	fileSendChunkFunc          func(friendID, fileID uint32, position uint64, data []byte) error
+	fileControlFunc            func(friendID, fileID uint32, control toxcore.FileControl) error
+	onFileRecvCallback         func(friendID, fileID, kind uint32, fileSize uint64, fileName string)
+	onFileRecvChunkCallback    func(friendID, fileID uint32, position uint64, data []byte)
+	onFileChunkRequestCallback func(friendID, fileID uint32, position uint64, length int)
 }
 
-func (m *MockToxManager) FileSend(friendID uint32, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error) {
+func (m *MockToxManager) FileSend(friendID, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error) {
 	if m.fileSendFunc != nil {
 		return m.fileSendFunc(friendID, kind, fileSize, fileID, fileName)
 	}
 	return 1, nil // Return mock file ID
 }
 
-func (m *MockToxManager) FileSendChunk(friendID uint32, fileID uint32, position uint64, data []byte) error {
+func (m *MockToxManager) FileSendChunk(friendID, fileID uint32, position uint64, data []byte) error {
 	if m.fileSendChunkFunc != nil {
 		return m.fileSendChunkFunc(friendID, fileID, position, data)
 	}
 	return nil
 }
 
-func (m *MockToxManager) FileControl(friendID uint32, fileID uint32, control toxcore.FileControl) error {
+func (m *MockToxManager) FileControl(friendID, fileID uint32, control toxcore.FileControl) error {
 	if m.fileControlFunc != nil {
 		return m.fileControlFunc(friendID, fileID, control)
 	}
 	return nil
 }
 
-func (m *MockToxManager) OnFileRecv(callback func(friendID uint32, fileID uint32, kind uint32, fileSize uint64, fileName string)) {
+func (m *MockToxManager) OnFileRecv(callback func(friendID, fileID, kind uint32, fileSize uint64, fileName string)) {
 	m.onFileRecvCallback = callback
 }
 
-func (m *MockToxManager) OnFileRecvChunk(callback func(friendID uint32, fileID uint32, position uint64, data []byte)) {
+func (m *MockToxManager) OnFileRecvChunk(callback func(friendID, fileID uint32, position uint64, data []byte)) {
 	m.onFileRecvChunkCallback = callback
 }
 
-func (m *MockToxManager) OnFileChunkRequest(callback func(friendID uint32, fileID uint32, position uint64, length int)) {
+func (m *MockToxManager) OnFileChunkRequest(callback func(friendID, fileID uint32, position uint64, length int)) {
 	m.onFileChunkRequestCallback = callback
 }
 
 // TriggerFileRecv simulates an incoming file transfer request
-func (m *MockToxManager) TriggerFileRecv(friendID uint32, fileID uint32, kind uint32, fileSize uint64, fileName string) {
+func (m *MockToxManager) TriggerFileRecv(friendID, fileID, kind uint32, fileSize uint64, fileName string) {
 	if m.onFileRecvCallback != nil {
 		m.onFileRecvCallback(friendID, fileID, kind, fileSize, fileName)
 	}
 }
 
 // TriggerFileRecvChunk simulates receiving a file chunk
-func (m *MockToxManager) TriggerFileRecvChunk(friendID uint32, fileID uint32, position uint64, data []byte) {
+func (m *MockToxManager) TriggerFileRecvChunk(friendID, fileID uint32, position uint64, data []byte) {
 	if m.onFileRecvChunkCallback != nil {
 		m.onFileRecvChunkCallback(friendID, fileID, position, data)
 	}
 }
 
 // TriggerFileChunkRequest simulates a request for a file chunk
-func (m *MockToxManager) TriggerFileChunkRequest(friendID uint32, fileID uint32, position uint64, length int) {
+func (m *MockToxManager) TriggerFileChunkRequest(friendID, fileID uint32, position uint64, length int) {
 	if m.onFileChunkRequestCallback != nil {
 		m.onFileChunkRequestCallback(friendID, fileID, position, length)
 	}
@@ -122,7 +122,7 @@ func TestSendFile(t *testing.T) {
 	// Create a test file
 	testContent := "Hello, World! This is a test file for transfer."
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -207,7 +207,7 @@ func TestSendFileTooLarge(t *testing.T) {
 	// Create a larger test file
 	testContent := "This content is longer than 10 bytes"
 	testFile := filepath.Join(tempDir, "large.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -227,7 +227,7 @@ func TestStartSend(t *testing.T) {
 	// Create test file and transfer
 	testContent := "Test file content"
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -393,7 +393,7 @@ func TestSetCallbacks(t *testing.T) {
 	// Create test file and transfer
 	testContent := "Test content"
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -451,7 +451,7 @@ func TestComputeFileChecksum(t *testing.T) {
 	testContent := "Hello, World!"
 	testFile := filepath.Join(tempDir, "test.txt")
 
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 

@@ -70,7 +70,7 @@ func (p *DefaultImageProcessor) CreateThumbnail(sourcePath, outputPath string, m
 	thumbnail := p.ResizeImage(img, uint(thumbWidth), uint(thumbHeight))
 
 	// Create output directory if needed
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 

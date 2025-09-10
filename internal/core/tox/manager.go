@@ -407,13 +407,13 @@ func (m *Manager) save() error {
 	}
 
 	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(m.saveFile), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Dir(m.saveFile), 0o700); err != nil {
 		return fmt.Errorf("failed to create savedata directory: %w", err)
 	}
 
 	// Write savedata atomically
 	tempFile := m.saveFile + ".tmp"
-	if err := os.WriteFile(tempFile, savedata, 0600); err != nil {
+	if err := os.WriteFile(tempFile, savedata, 0o600); err != nil {
 		return fmt.Errorf("failed to write temporary savedata: %w", err)
 	}
 
@@ -461,7 +461,7 @@ func (m *Manager) OnFriendName(callback func(uint32, string)) {
 // File transfer methods implementing the transfer.ToxManager interface
 
 // FileSend initiates a file transfer to a friend
-func (m *Manager) FileSend(friendID uint32, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error) {
+func (m *Manager) FileSend(friendID, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -477,7 +477,7 @@ func (m *Manager) FileSend(friendID uint32, kind uint32, fileSize uint64, fileID
 }
 
 // FileSendChunk sends a chunk of file data
-func (m *Manager) FileSendChunk(friendID uint32, fileID uint32, position uint64, data []byte) error {
+func (m *Manager) FileSendChunk(friendID, fileID uint32, position uint64, data []byte) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -490,7 +490,7 @@ func (m *Manager) FileSendChunk(friendID uint32, fileID uint32, position uint64,
 }
 
 // FileControl sends a file control command
-func (m *Manager) FileControl(friendID uint32, fileID uint32, control toxcore.FileControl) error {
+func (m *Manager) FileControl(friendID, fileID uint32, control toxcore.FileControl) error {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -503,21 +503,21 @@ func (m *Manager) FileControl(friendID uint32, fileID uint32, control toxcore.Fi
 }
 
 // OnFileRecv sets the file receive callback
-func (m *Manager) OnFileRecv(callback func(friendID uint32, fileID uint32, kind uint32, fileSize uint64, fileName string)) {
+func (m *Manager) OnFileRecv(callback func(friendID, fileID, kind uint32, fileSize uint64, fileName string)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.onFileRecv = callback
 }
 
 // OnFileRecvChunk sets the file receive chunk callback
-func (m *Manager) OnFileRecvChunk(callback func(friendID uint32, fileID uint32, position uint64, data []byte)) {
+func (m *Manager) OnFileRecvChunk(callback func(friendID, fileID uint32, position uint64, data []byte)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.onFileRecvChunk = callback
 }
 
 // OnFileChunkRequest sets the file chunk request callback
-func (m *Manager) OnFileChunkRequest(callback func(friendID uint32, fileID uint32, position uint64, length int)) {
+func (m *Manager) OnFileChunkRequest(callback func(friendID, fileID uint32, position uint64, length int)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.onFileChunkRequest = callback

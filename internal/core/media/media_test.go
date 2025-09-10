@@ -101,7 +101,7 @@ func TestDefaultMediaDetector(t *testing.T) {
 
 		// Test unsupported file
 		unsupportedPath := filepath.Join(tempDir, "test.txt")
-		err = os.WriteFile(unsupportedPath, []byte("test content"), 0644)
+		err = os.WriteFile(unsupportedPath, []byte("test content"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test text file: %v", err)
 		}
@@ -265,7 +265,7 @@ func TestMediaManager(t *testing.T) {
 
 		// Test with text file
 		testTextPath := filepath.Join(tempDir, "test.txt")
-		err = os.WriteFile(testTextPath, []byte("test"), 0644)
+		err = os.WriteFile(testTextPath, []byte("test"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create test text file: %v", err)
 		}
@@ -296,7 +296,7 @@ func TestMediaManager(t *testing.T) {
 
 		// Test valid file path
 		validPath := filepath.Join(tempDir, "valid.txt")
-		err = os.WriteFile(validPath, []byte("test"), 0644)
+		err = os.WriteFile(validPath, []byte("test"), 0o644)
 		if err != nil {
 			t.Fatalf("Failed to create valid test file: %v", err)
 		}

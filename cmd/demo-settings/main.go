@@ -35,7 +35,7 @@ func main() {
 	configPath := filepath.Join(configDir, "config.yaml")
 
 	// Ensure config directory exists
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		log.Fatalf("Failed to create config directory: %v", err)
 	}
 

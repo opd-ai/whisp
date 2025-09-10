@@ -524,5 +524,5 @@ func generateUUID() string {
 
 // ensureDir creates a directory if it doesn't exist
 func ensureDir(dir string) error {
-	return os.MkdirAll(dir, 0700)
+	return os.MkdirAll(dir, 0o700)
 }

@@ -131,7 +131,6 @@ func TestCrossPlatformManager(t *testing.T) {
 
 		notification := NewNotification(NotificationMessage, "Test", "Body")
 		err := manager.Show(context.Background(), notification)
-
 		// Should not error when disabled, just silently ignore
 		if err != nil {
 			t.Errorf("Unexpected error when notifications disabled: %v", err)

@@ -115,7 +115,7 @@ func (m *Manager) StartSend(transfer *Transfer, toxMgr ToxManager) error {
 }
 
 // AcceptIncomingFile accepts an incoming file transfer
-func (m *Manager) AcceptIncomingFile(transferID string, saveDir string) error {
+func (m *Manager) AcceptIncomingFile(transferID, saveDir string) error {
 	m.mu.RLock()
 	transfer, exists := m.transfers[transferID]
 	m.mu.RUnlock()
@@ -139,7 +139,7 @@ func (m *Manager) AcceptIncomingFile(transferID string, saveDir string) error {
 	savePath := filepath.Join(saveDir, transfer.FileName)
 
 	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(savePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(savePath), 0o755); err != nil {
 		return fmt.Errorf("failed to create save directory: %w", err)
 	}
 

@@ -116,7 +116,7 @@ func TestApplicationInitialization(t *testing.T) {
 
 		// Test that we can create directories (functionality used in main)
 		testDir := os.TempDir() + "/whisp-test"
-		err := os.MkdirAll(testDir, 0700)
+		err := os.MkdirAll(testDir, 0o700)
 		if err != nil {
 			t.Errorf("Should be able to create directories: %v", err)
 		}

@@ -17,7 +17,7 @@ func TestPauseTransfer(t *testing.T) {
 	// Create test file and transfer
 	testContent := "Test content"
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -55,7 +55,7 @@ func TestResumeTransfer(t *testing.T) {
 	// Create test file and transfer
 	testContent := "Test content"
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -96,7 +96,7 @@ func TestCancelTransfer(t *testing.T) {
 	// Create test file and transfer
 	testContent := "Test content"
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -138,7 +138,7 @@ func TestGetActiveTransfers(t *testing.T) {
 	// Create multiple test files and transfers
 	for i := 0; i < 3; i++ {
 		testFile := filepath.Join(tempDir, fmt.Sprintf("test%d.txt", i))
-		if err := os.WriteFile(testFile, []byte("content"), 0644); err != nil {
+		if err := os.WriteFile(testFile, []byte("content"), 0o644); err != nil {
 			t.Fatalf("Failed to create test file: %v", err)
 		}
 
@@ -223,7 +223,7 @@ func TestHandleFileChunkRequest(t *testing.T) {
 	// Create test file and transfer
 	testContent := "Hello, World!"
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -234,7 +234,7 @@ func TestHandleFileChunkRequest(t *testing.T) {
 
 	var sentData []byte
 	mockTox := &MockToxManager{
-		fileSendChunkFunc: func(friendID uint32, fileID uint32, position uint64, data []byte) error {
+		fileSendChunkFunc: func(friendID, fileID uint32, position uint64, data []byte) error {
 			sentData = make([]byte, len(data))
 			copy(sentData, data)
 			return nil

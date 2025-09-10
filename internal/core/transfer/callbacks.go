@@ -10,7 +10,7 @@ import (
 )
 
 // handleFileRecv handles incoming file transfer requests from Tox
-func (m *Manager) handleFileRecv(friendID uint32, fileID uint32, kind uint32, fileSize uint64, fileName string) {
+func (m *Manager) handleFileRecv(friendID, fileID, kind uint32, fileSize uint64, fileName string) {
 	log.Printf("Received file transfer request: friend=%d, fileID=%d, size=%d, name=%s",
 		friendID, fileID, fileSize, fileName)
 
@@ -45,7 +45,7 @@ func (m *Manager) handleFileRecv(friendID uint32, fileID uint32, kind uint32, fi
 }
 
 // handleFileRecvChunk handles incoming file data chunks from Tox
-func (m *Manager) handleFileRecvChunk(friendID uint32, fileID uint32, position uint64, data []byte) {
+func (m *Manager) handleFileRecvChunk(friendID, fileID uint32, position uint64, data []byte) {
 	// Find the transfer
 	m.mu.RLock()
 	friendTransfers, exists := m.toxTransfers[friendID]
@@ -108,7 +108,7 @@ func (m *Manager) handleFileRecvChunk(friendID uint32, fileID uint32, position u
 }
 
 // handleFileChunkRequest handles requests for file chunks from Tox (for outgoing transfers)
-func (m *Manager) handleFileChunkRequest(friendID uint32, fileID uint32, position uint64, length int) {
+func (m *Manager) handleFileChunkRequest(friendID, fileID uint32, position uint64, length int) {
 	// Find the transfer
 	m.mu.RLock()
 	friendTransfers, exists := m.toxTransfers[friendID]

@@ -492,7 +492,7 @@ func (tm *DefaultThemeManager) loadPreferences() error {
 
 func (tm *DefaultThemeManager) savePreferences() error {
 	// Ensure config directory exists
-	if err := os.MkdirAll(tm.configDir, 0755); err != nil {
+	if err := os.MkdirAll(tm.configDir, 0o755); err != nil {
 		return err
 	}
 
@@ -502,7 +502,7 @@ func (tm *DefaultThemeManager) savePreferences() error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0o644)
 }
 
 func (tm *DefaultThemeManager) loadCustomThemes() error {
@@ -530,7 +530,7 @@ func (tm *DefaultThemeManager) loadCustomThemes() error {
 
 func (tm *DefaultThemeManager) saveCustomThemes() error {
 	// Ensure config directory exists
-	if err := os.MkdirAll(tm.configDir, 0755); err != nil {
+	if err := os.MkdirAll(tm.configDir, 0o755); err != nil {
 		return err
 	}
 
@@ -540,5 +540,5 @@ func (tm *DefaultThemeManager) saveCustomThemes() error {
 		return err
 	}
 
-	return os.WriteFile(path, data, 0644)
+	return os.WriteFile(path, data, 0o644)
 }

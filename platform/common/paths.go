@@ -32,7 +32,7 @@ func GetUserDataDir() (string, error) {
 		if xdgDataHome != "" {
 			return filepath.Join(xdgDataHome, "whisp"), nil
 		}
-		
+
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
@@ -86,7 +86,7 @@ func GetCacheDir() (string, error) {
 		if xdgCacheHome != "" {
 			return filepath.Join(xdgCacheHome, "whisp"), nil
 		}
-		
+
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
@@ -120,7 +120,7 @@ func GetConfigDir() (string, error) {
 		if xdgConfigHome != "" {
 			return filepath.Join(xdgConfigHome, "whisp"), nil
 		}
-		
+
 		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", err

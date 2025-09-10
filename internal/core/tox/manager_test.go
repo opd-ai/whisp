@@ -261,11 +261,11 @@ func TestManager_SaveFileHandling(t *testing.T) {
 
 	// Test saving to read-only directory
 	readOnlyDir := filepath.Join(tempDir, "readonly")
-	err = os.Mkdir(readOnlyDir, 0555) // Read-only directory
+	err = os.Mkdir(readOnlyDir, 0o555) // Read-only directory
 	if err != nil {
 		t.Fatalf("Failed to create read-only directory: %v", err)
 	}
-	defer os.Chmod(readOnlyDir, 0755) // Restore permissions for cleanup
+	defer os.Chmod(readOnlyDir, 0o755) // Restore permissions for cleanup
 
 	// Change save file to read-only directory
 	manager.saveFile = filepath.Join(readOnlyDir, "tox.save")
@@ -293,7 +293,7 @@ func TestManager_LoadSavedataErrors(t *testing.T) {
 
 	// Test loading empty file
 	emptyFile := filepath.Join(tempDir, "empty.save")
-	err = os.WriteFile(emptyFile, []byte{}, 0600)
+	err = os.WriteFile(emptyFile, []byte{}, 0o600)
 	if err != nil {
 		t.Fatalf("Failed to create empty file: %v", err)
 	}

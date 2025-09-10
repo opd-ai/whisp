@@ -254,7 +254,7 @@ advanced:
   max_concurrent_downloads: 5
 `
 
-	err = os.WriteFile(configPath, []byte(sampleConfig), 0644)
+	err = os.WriteFile(configPath, []byte(sampleConfig), 0o644)
 	if err != nil {
 		t.Fatalf("Failed to write sample config: %v", err)
 	}

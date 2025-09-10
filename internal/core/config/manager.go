@@ -159,7 +159,7 @@ func (m *Manager) Load() error {
 func (m *Manager) Save() error {
 	// Ensure config directory exists
 	configDir := filepath.Dir(m.configPath)
-	if err := os.MkdirAll(configDir, 0755); err != nil {
+	if err := os.MkdirAll(configDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create config directory: %w", err)
 	}
 
@@ -168,7 +168,7 @@ func (m *Manager) Save() error {
 		return fmt.Errorf("failed to marshal config: %w", err)
 	}
 
-	return os.WriteFile(m.configPath, data, 0644)
+	return os.WriteFile(m.configPath, data, 0o644)
 }
 
 // GetConfig returns the current configuration

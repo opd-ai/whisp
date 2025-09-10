@@ -36,7 +36,7 @@ func TestFileTransferIntegration(t *testing.T) {
 	// Create a test file
 	testContent := "Hello, World! File transfer test."
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -115,7 +115,7 @@ func TestFileTransferUIIntegration(t *testing.T) {
 	// Create test file
 	testFile := filepath.Join(tempDir, "ui_test.txt")
 	testContent := "UI integration test content"
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		t.Fatalf("Failed to create test file: %v", err)
 	}
 

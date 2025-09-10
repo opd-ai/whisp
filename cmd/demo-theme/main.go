@@ -26,7 +26,7 @@ func main() {
 	demoDir := filepath.Join(homeDir, ".local", "share", "whisp", "demo-theme")
 	fmt.Printf("Demo directory: %s\n", demoDir)
 
-	if err := os.MkdirAll(demoDir, 0755); err != nil {
+	if err := os.MkdirAll(demoDir, 0o755); err != nil {
 		log.Fatal(err)
 	}
 

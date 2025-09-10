@@ -50,7 +50,7 @@ func main() {
 	// Test 1: Create a test file
 	testContent := "Hello, World! This is a test file for transfer demonstration."
 	testFile := filepath.Join(tempDir, "test.txt")
-	if err := os.WriteFile(testFile, []byte(testContent), 0644); err != nil {
+	if err := os.WriteFile(testFile, []byte(testContent), 0o644); err != nil {
 		log.Fatalf("Failed to create test file: %v", err)
 	}
 
@@ -90,7 +90,7 @@ func main() {
 	}
 
 	largeFile := filepath.Join(tempDir, "large_test.bin")
-	if err := os.WriteFile(largeFile, largeContent, 0644); err != nil {
+	if err := os.WriteFile(largeFile, largeContent, 0o644); err != nil {
 		log.Fatalf("Failed to create large test file: %v", err)
 	}
 

@@ -23,7 +23,7 @@ func main() {
 
 	// Create demo data directory
 	demoDir := filepath.Join(dataDir, "demo-voice")
-	if err := os.MkdirAll(demoDir, 0755); err != nil {
+	if err := os.MkdirAll(demoDir, 0o755); err != nil {
 		log.Fatalf("Failed to create demo directory: %v", err)
 	}
 
@@ -80,7 +80,7 @@ func main() {
 
 	friendID := uint32(123) // Mock friend ID
 	voiceDir := filepath.Join(demoDir, "voice_messages")
-	if err := os.MkdirAll(voiceDir, 0755); err != nil {
+	if err := os.MkdirAll(voiceDir, 0o755); err != nil {
 		log.Fatalf("Failed to create voice directory: %v", err)
 	}
 

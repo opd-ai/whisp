@@ -97,7 +97,7 @@ func (g *DefaultThumbnailGenerator) generateImageThumbnail(filePath string, maxW
 // createVideoPlaceholder creates a placeholder thumbnail for video files
 func (g *DefaultThumbnailGenerator) createVideoPlaceholder(thumbnailPath string, maxWidth, maxHeight int) (string, error) {
 	// Create directory if needed
-	if err := os.MkdirAll(filepath.Dir(thumbnailPath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(thumbnailPath), 0o755); err != nil {
 		return "", fmt.Errorf("failed to create thumbnail directory: %w", err)
 	}
 

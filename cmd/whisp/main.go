@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// Ensure data directory exists
-	if err := os.MkdirAll(*dataDir, 0700); err != nil {
+	if err := os.MkdirAll(*dataDir, 0o700); err != nil {
 		log.Fatal("Failed to create data directory:", err)
 	}
 
@@ -84,7 +84,7 @@ func main() {
 
 	// Start application
 	log.Printf("Starting Whisp %s on %s", version, platform)
-	
+
 	if err := coreApp.Start(ctx); err != nil {
 		log.Fatal("Failed to start application:", err)
 	}
@@ -104,6 +104,6 @@ func main() {
 			<-ctx.Done()
 		}
 	}
-	
+
 	log.Println("Application stopped")
 }

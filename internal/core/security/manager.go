@@ -34,7 +34,7 @@ func NewManager(dataDir string) (*Manager, error) {
 
 	// Ensure security directory exists
 	securityDir := filepath.Join(dataDir, "security")
-	if err := os.MkdirAll(securityDir, 0700); err != nil {
+	if err := os.MkdirAll(securityDir, 0o700); err != nil {
 		return nil, fmt.Errorf("failed to create security directory: %w", err)
 	}
 
@@ -382,12 +382,12 @@ func (m *Manager) secureFileStore(key, value string) error {
 
 	// Store in secure directory
 	secureDir := filepath.Join(m.dataDir, "security", "keystore")
-	if err := os.MkdirAll(secureDir, 0700); err != nil {
+	if err := os.MkdirAll(secureDir, 0o700); err != nil {
 		return fmt.Errorf("failed to create secure directory: %w", err)
 	}
 
 	keyFile := filepath.Join(secureDir, key+".enc")
-	if err := os.WriteFile(keyFile, encryptedValue, 0600); err != nil {
+	if err := os.WriteFile(keyFile, encryptedValue, 0o600); err != nil {
 		return fmt.Errorf("failed to write encrypted file: %w", err)
 	}
 

@@ -14,12 +14,12 @@ import (
 
 // ToxManager interface for Tox file transfer operations
 type ToxManager interface {
-	FileSend(friendID uint32, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error)
-	FileSendChunk(friendID uint32, fileID uint32, position uint64, data []byte) error
-	FileControl(friendID uint32, fileID uint32, control toxcore.FileControl) error
-	OnFileRecv(callback func(friendID uint32, fileID uint32, kind uint32, fileSize uint64, fileName string))
-	OnFileRecvChunk(callback func(friendID uint32, fileID uint32, position uint64, data []byte))
-	OnFileChunkRequest(callback func(friendID uint32, fileID uint32, position uint64, length int))
+	FileSend(friendID, kind uint32, fileSize uint64, fileID [32]byte, fileName string) (uint32, error)
+	FileSendChunk(friendID, fileID uint32, position uint64, data []byte) error
+	FileControl(friendID, fileID uint32, control toxcore.FileControl) error
+	OnFileRecv(callback func(friendID, fileID, kind uint32, fileSize uint64, fileName string))
+	OnFileRecvChunk(callback func(friendID, fileID uint32, position uint64, data []byte))
+	OnFileChunkRequest(callback func(friendID, fileID uint32, position uint64, length int))
 }
 
 // TransferState represents the current state of a file transfer
@@ -105,7 +105,7 @@ type Manager struct {
 // NewManager creates a new file transfer manager
 func NewManager(dataDir string) (*Manager, error) {
 	transfersDir := filepath.Join(dataDir, "transfers")
-	if err := os.MkdirAll(transfersDir, 0755); err != nil {
+	if err := os.MkdirAll(transfersDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create transfers directory: %w", err)
 	}
 

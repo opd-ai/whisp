@@ -21,7 +21,7 @@ func main() {
 
 	// Create demo subdirectory
 	demoDir := filepath.Join(dataDir, "demo-secure-storage")
-	if err := os.MkdirAll(demoDir, 0755); err != nil {
+	if err := os.MkdirAll(demoDir, 0o755); err != nil {
 		log.Fatalf("Failed to create demo directory: %v", err)
 	}
 

@@ -19,9 +19,10 @@ import (
 
 // UI manages the adaptive user interface
 type UI struct {
-	app      fyne.App
-	coreApp  CoreApp
-	platform Platform
+	app          fyne.App
+	coreApp      CoreApp
+	platform     Platform
+	themeManager theme.ThemeManager
 
 	mainWindow    fyne.Window
 	chatView      *shared.ChatView
@@ -42,10 +43,21 @@ type CoreApp interface {
 
 // NewUI creates a new adaptive UI
 func NewUI(app fyne.App, coreApp CoreApp, platform Platform) (*UI, error) {
+	// Initialize theme manager
+	configDir := "/home/user/.local/share/whisp" // This should come from config
+	themeManager := theme.NewDefaultThemeManager(configDir)
+	if err := themeManager.Initialize(app); err != nil {
+		return nil, fmt.Errorf("failed to initialize theme manager: %w", err)
+	}
+
+	// Apply theme to app
+	themeManager.ApplyTheme(app)
+
 	ui := &UI{
-		app:      app,
-		coreApp:  coreApp,
-		platform: platform,
+		app:          app,
+		coreApp:      coreApp,
+		platform:     platform,
+		themeManager: themeManager,
 	}
 
 	return ui, nil
@@ -465,4 +477,83 @@ func (ui *UI) showAboutDialog() {
 	)
 
 	dialog.ShowCustom("About Whisp", "Close", content, ui.mainWindow)
+}
+
+// GetThemeManager returns the theme manager
+func (ui *UI) GetThemeManager() theme.ThemeManager {
+	return ui.themeManager
+}
+
+// ShowThemeDialog displays the theme selection dialog
+func (ui *UI) ShowThemeDialog() {
+	if ui.mainWindow == nil {
+		return // Cannot show dialog without main window
+	}
+
+	// Current theme info
+	currentTheme := ui.themeManager.GetThemeType()
+	themeLabel := widget.NewLabel(fmt.Sprintf("Current theme: %v", currentTheme))
+
+	// Theme selection buttons
+	lightBtn := widget.NewButton("Light Theme", func() {
+		ui.themeManager.SetTheme(theme.ThemeLight)
+		themeLabel.SetText(fmt.Sprintf("Current theme: %v", theme.ThemeLight))
+	})
+
+	darkBtn := widget.NewButton("Dark Theme", func() {
+		ui.themeManager.SetTheme(theme.ThemeDark)
+		themeLabel.SetText(fmt.Sprintf("Current theme: %v", theme.ThemeDark))
+	})
+
+	systemBtn := widget.NewButton("System Theme", func() {
+		ui.themeManager.SetTheme(theme.ThemeSystem)
+		themeLabel.SetText(fmt.Sprintf("Current theme: %v", theme.ThemeSystem))
+	})
+
+	// Custom themes section
+	customThemes := ui.themeManager.ListCustomThemes()
+	var customButtons []fyne.CanvasObject
+
+	if len(customThemes) > 0 {
+		customButtons = append(customButtons, widget.NewSeparator())
+		customButtons = append(customButtons, widget.NewLabel("Custom Themes:"))
+
+		for _, ct := range customThemes {
+			themeName := ct.Name // Capture for closure
+			btn := widget.NewButton(themeName, func() {
+				// Set custom theme by updating preferences
+				prefs := ui.themeManager.GetPreferences()
+				prefs.CustomThemeName = themeName
+				prefs.ThemeType = theme.ThemeCustom
+				ui.themeManager.SetPreferences(prefs)
+				themeLabel.SetText(fmt.Sprintf("Current theme: %s (custom)", themeName))
+			})
+			customButtons = append(customButtons, btn)
+		}
+	}
+
+	// Preferences
+	prefs := ui.themeManager.GetPreferences()
+	followSystemCheck := widget.NewCheck("Follow system theme", func(checked bool) {
+		ui.themeManager.EnableSystemThemeFollowing(checked)
+	})
+	followSystemCheck.SetChecked(prefs.FollowSystemTheme)
+
+	// Build content
+	content := container.NewVBox(
+		themeLabel,
+		widget.NewSeparator(),
+		widget.NewLabel("Theme Selection:"),
+		container.NewHBox(lightBtn, darkBtn, systemBtn),
+	)
+
+	// Add custom theme buttons if any
+	for _, btn := range customButtons {
+		content.Add(btn)
+	}
+
+	content.Add(widget.NewSeparator())
+	content.Add(followSystemCheck)
+
+	dialog.ShowCustom("Theme Settings", "Close", content, ui.mainWindow)
 }

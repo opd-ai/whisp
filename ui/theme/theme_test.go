@@ -297,7 +297,7 @@ func TestThemeManager(t *testing.T) {
 		if prefs.ThemeType != ThemeSystem {
 			t.Error("Default theme type should be system")
 		}
-		
+
 		// After initialization, the theme may be resolved to the actual system theme
 
 		// Test setting preferences

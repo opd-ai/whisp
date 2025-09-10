@@ -415,6 +415,8 @@ func (tm *DefaultThemeManager) isDarkScheme(scheme ColorScheme) bool {
 }
 
 func (tm *DefaultThemeManager) applyThemeBasedOnPreferences() error {
+	// Sync currentThemeType with loaded preferences
+	tm.currentThemeType = tm.preferences.ThemeType
 	return tm.updateCurrentTheme()
 }
 
@@ -517,7 +519,9 @@ func (tm *DefaultThemeManager) loadCustomThemes() error {
 
 	var themes map[string]CustomTheme
 	if err := json.Unmarshal(data, &themes); err != nil {
-		return err
+		// Log error but don't fail initialization - just skip loading custom themes
+		fmt.Printf("Warning: failed to load custom themes: %v\n", err)
+		return nil
 	}
 
 	tm.customThemes = themes

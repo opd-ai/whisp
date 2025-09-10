@@ -385,7 +385,7 @@ func (tm *DefaultThemeManager) SetPreferences(prefs ThemePreferences) error {
 
 	// Save preferences before releasing lock
 	saveErr := tm.savePreferences()
-	
+
 	// Release lock before notifying to avoid blocking
 	tm.mu.Unlock()
 

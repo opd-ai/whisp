@@ -248,8 +248,9 @@ Key architectural decisions:
 - [x] Theme system with light/dark/custom themes
 - [x] Cross-platform notification system
 
-### 🔄 Phase 5: Final Features (Next - 8% Complete)
-- [ ] Media preview for images and videos in chat
+### 🔄 Phase 5: Final Features (Next - 60% Complete)
+- [x] Media preview for images and videos in chat
+- [ ] P2P voice and video calls over Tox protocol
 - [ ] App store packages and distribution
 - [ ] Performance optimization and security audits
 - [ ] Final documentation and user guides

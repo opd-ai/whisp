@@ -105,7 +105,7 @@ func calculateThumbnailSize(origWidth, origHeight, maxWidth, maxHeight int) (int
 	// Calculate scaling factor to fit within bounds
 	scaleX := float64(maxWidth) / float64(origWidth)
 	scaleY := float64(maxHeight) / float64(origHeight)
-	
+
 	scale := scaleX
 	if scaleY < scaleX {
 		scale = scaleY

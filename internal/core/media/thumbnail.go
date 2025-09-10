@@ -56,7 +56,7 @@ func (g *DefaultThumbnailGenerator) GenerateVideoThumbnail(filePath string, maxW
 	// For now, return a placeholder for video thumbnails
 	// In a full implementation, this would extract a frame from the video
 	thumbnailPath := g.getThumbnailPath(filePath, maxWidth, maxHeight)
-	
+
 	// Create a simple placeholder image for video thumbnails
 	return g.createVideoPlaceholder(thumbnailPath, maxWidth, maxHeight)
 }
@@ -65,7 +65,7 @@ func (g *DefaultThumbnailGenerator) GenerateVideoThumbnail(filePath string, maxW
 func (g *DefaultThumbnailGenerator) GetCachedThumbnail(filePath string, maxWidth, maxHeight int) (string, bool) {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
-	
+
 	return g.getCachedThumbnailPath(filePath, maxWidth, maxHeight)
 }
 
@@ -84,7 +84,7 @@ func (g *DefaultThumbnailGenerator) ClearCache() error {
 // generateImageThumbnail creates a thumbnail for image files
 func (g *DefaultThumbnailGenerator) generateImageThumbnail(filePath string, maxWidth, maxHeight int) (string, error) {
 	thumbnailPath := g.getThumbnailPath(filePath, maxWidth, maxHeight)
-	
+
 	// Create thumbnail using image processor
 	err := g.processor.CreateThumbnail(filePath, thumbnailPath, maxWidth, maxHeight)
 	if err != nil {
@@ -122,21 +122,21 @@ func (g *DefaultThumbnailGenerator) createVideoPlaceholder(thumbnailPath string,
 func (g *DefaultThumbnailGenerator) getThumbnailPath(filePath string, maxWidth, maxHeight int) string {
 	// Create a hash of the file path and dimensions for unique naming
 	hash := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s_%d_%d", filePath, maxWidth, maxHeight))))
-	
+
 	// Use JPEG extension for thumbnails
 	fileName := fmt.Sprintf("%s.jpg", hash)
-	
+
 	return filepath.Join(g.cacheDir, fileName)
 }
 
 // getCachedThumbnailPath checks if a cached thumbnail exists and returns its path
 func (g *DefaultThumbnailGenerator) getCachedThumbnailPath(filePath string, maxWidth, maxHeight int) (string, bool) {
 	thumbnailPath := g.getThumbnailPath(filePath, maxWidth, maxHeight)
-	
+
 	// Check if thumbnail file exists
 	if _, err := os.Stat(thumbnailPath); err == nil {
 		return thumbnailPath, true
 	}
-	
+
 	return "", false
 }

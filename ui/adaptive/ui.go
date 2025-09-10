@@ -12,6 +12,7 @@ import (
 
 	"github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
+	"github.com/opd-ai/whisp/internal/core/media"
 	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/ui/shared"
 	"github.com/opd-ai/whisp/ui/theme"
@@ -39,6 +40,12 @@ type CoreApp interface {
 	GetConfigManager() *config.Manager
 	SendMessageFromUI(friendID uint32, content string) error
 	AddContactFromUI(toxID, message string) error
+
+	// Media-related methods
+	GetMediaInfoFromUI(filePath string) (*media.MediaInfo, error)
+	GenerateThumbnailFromUI(filePath string, maxWidth, maxHeight int) (string, error)
+	IsMediaFileFromUI(filePath string) bool
+	GetThumbnailPathFromUI(filePath string, maxWidth, maxHeight int) (string, bool)
 }
 
 // NewUI creates a new adaptive UI

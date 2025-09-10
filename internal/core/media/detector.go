@@ -93,7 +93,7 @@ func (d *DefaultMediaDetector) IsSupported(filePath string) bool {
 	if err != nil {
 		return false
 	}
-	
+
 	// Currently support images and basic video thumbnails
 	return mediaType == MediaTypeImage || mediaType == MediaTypeVideo
 }
@@ -144,7 +144,7 @@ func (d *DefaultMediaDetector) detectByContent(filePath string) (MediaType, erro
 	}
 
 	contentType := http.DetectContentType(buffer[:n])
-	
+
 	if strings.HasPrefix(contentType, "image/") {
 		return MediaTypeImage, nil
 	}

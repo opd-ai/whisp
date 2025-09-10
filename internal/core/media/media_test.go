@@ -12,7 +12,7 @@ import (
 // TestMediaTypes tests the MediaType enum and String method
 func TestMediaTypes(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		mediaType MediaType
 		expected  string
 	}{
@@ -75,7 +75,7 @@ func TestDefaultMediaDetector(t *testing.T) {
 		// Create a temporary image file for testing
 		tempDir := t.TempDir()
 		testImagePath := filepath.Join(tempDir, "test.png")
-		
+
 		// Create a simple test image
 		img := image.NewRGBA(image.Rect(0, 0, 10, 10))
 		for y := 0; y < 10; y++ {
@@ -119,11 +119,11 @@ func TestDefaultImageProcessor(t *testing.T) {
 	t.Run("ResizeImage", func(t *testing.T) {
 		// Create a test image
 		img := image.NewRGBA(image.Rect(0, 0, 100, 100))
-		
+
 		// Resize to smaller dimensions
 		resized := processor.ResizeImage(img, 50, 50)
 		bounds := resized.Bounds()
-		
+
 		if bounds.Dx() != 50 || bounds.Dy() != 50 {
 			t.Errorf("Expected resized image to be 50x50, got %dx%d", bounds.Dx(), bounds.Dy())
 		}
@@ -179,7 +179,7 @@ func TestDefaultThumbnailGenerator(t *testing.T) {
 		// Create a test image
 		sourcePath := filepath.Join(tempDir, "test.png")
 		img := image.NewRGBA(image.Rect(0, 0, 100, 100))
-		
+
 		file, err := os.Create(sourcePath)
 		if err != nil {
 			t.Fatalf("Failed to create test image: %v", err)

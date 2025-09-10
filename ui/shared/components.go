@@ -22,7 +22,7 @@ type CoreApp interface {
 	GetMessages() *message.Manager
 	GetContacts() *contact.Manager
 	GetConfigManager() *config.Manager
-	
+
 	// Media-related methods
 	GetMediaInfoFromUI(filePath string) (*media.MediaInfo, error)
 	GenerateThumbnailFromUI(filePath string, maxWidth, maxHeight int) (string, error)
@@ -56,17 +56,21 @@ func (cv *ChatView) initializeComponents() {
 	cv.messages = widget.NewList(
 		func() int { return len(cv.messageData) },
 		func() fyne.CanvasObject {
-			return widget.NewLabel("Template")
+			// Create a container that can hold both text and media previews
+			return container.NewVBox(widget.NewLabel("Template"))
 		},
 		func(i widget.ListItemID, o fyne.CanvasObject) {
 			if i < len(cv.messageData) {
 				msg := cv.messageData[i]
-				label := o.(*widget.Label)
-				if msg.IsOutgoing {
-					label.SetText(fmt.Sprintf("You: %s", msg.Content))
-				} else {
-					label.SetText(fmt.Sprintf("Friend: %s", msg.Content))
-				}
+				container := o.(*fyne.Container)
+
+				// Clear existing content
+				container.Objects = nil
+
+				// Create message content based on type
+				cv.createMessageContent(container, msg)
+
+				container.Refresh()
 			}
 		},
 	)
@@ -95,6 +99,71 @@ func (cv *ChatView) initializeComponents() {
 		nil, inputContainer, nil, nil,
 		cv.messages,
 	)
+}
+
+// createMessageContent creates the appropriate content for a message based on its type
+func (cv *ChatView) createMessageContent(container *fyne.Container, msg *message.Message) {
+	// Create sender prefix
+	var sender string
+	if msg.IsOutgoing {
+		sender = "You: "
+	} else {
+		sender = "Friend: "
+	}
+
+	// Handle different message types
+	switch msg.MessageType {
+	case message.MessageTypeFile, message.MessageTypeImage, message.MessageTypeVideo:
+		// For file messages, show both text and media preview
+		if msg.FilePath != "" {
+			cv.createFileMessageContent(container, msg, sender)
+		} else {
+			cv.createTextMessageContent(container, msg, sender)
+		}
+	case message.MessageTypeVoice:
+		cv.createVoiceMessageContent(container, msg, sender)
+	default:
+		cv.createTextMessageContent(container, msg, sender)
+	}
+}
+
+// createTextMessageContent creates content for text messages
+func (cv *ChatView) createTextMessageContent(container *fyne.Container, msg *message.Message, sender string) {
+	label := widget.NewLabel(sender + msg.Content)
+	label.Wrapping = fyne.TextWrapWord
+	container.Add(label)
+}
+
+// createFileMessageContent creates content for file messages with media preview
+func (cv *ChatView) createFileMessageContent(container *fyne.Container, msg *message.Message, sender string) {
+	// Add text content
+	textLabel := widget.NewLabel(sender + msg.Content)
+	textLabel.Wrapping = fyne.TextWrapWord
+	container.Add(textLabel)
+
+	// Add media preview if it's a media file
+	if cv.coreApp.IsMediaFileFromUI(msg.FilePath) {
+		mediaPreview := NewMediaPreview(cv.coreApp, msg.FilePath, 200, 150)
+		container.Add(mediaPreview.Container())
+	} else {
+		// Show file info for non-media files
+		fileInfo := widget.NewLabel(fmt.Sprintf("📎 File: %s", msg.FilePath))
+		fileInfo.TextStyle = fyne.TextStyle{Italic: true}
+		container.Add(fileInfo)
+	}
+}
+
+// createVoiceMessageContent creates content for voice messages
+func (cv *ChatView) createVoiceMessageContent(container *fyne.Container, msg *message.Message, sender string) {
+	// Add text content
+	textLabel := widget.NewLabel(sender + msg.Content)
+	textLabel.Wrapping = fyne.TextWrapWord
+	container.Add(textLabel)
+
+	// Add voice message indicator
+	voiceLabel := widget.NewLabel("🎵 Voice Message")
+	voiceLabel.TextStyle = fyne.TextStyle{Italic: true}
+	container.Add(voiceLabel)
 }
 
 // sendMessage handles sending a message
@@ -332,12 +401,12 @@ func (cl *ContactList) showErrorDialog(message string) {
 
 // MediaPreview represents a media preview widget for displaying image/video thumbnails
 type MediaPreview struct {
-	container    *fyne.Container
-	image        *widget.Card
-	videoIcon    *widget.Card
-	mediaInfo    *media.MediaInfo
+	container     *fyne.Container
+	image         *widget.Card
+	videoIcon     *widget.Card
+	mediaInfo     *media.MediaInfo
 	thumbnailPath string
-	coreApp      CoreApp
+	coreApp       CoreApp
 }
 
 // NewMediaPreview creates a new media preview for a file
@@ -401,12 +470,12 @@ func (mp *MediaPreview) createImagePreview(filePath string) {
 	subtitle := mp.formatFileSize(mp.mediaInfo.Size)
 
 	mp.image = widget.NewCard(title, subtitle, nil)
-	
+
 	// TODO: In a full implementation, load the actual thumbnail image
 	// For now, show a placeholder with image info
 	content := widget.NewLabel(fmt.Sprintf("📷 %s", title))
 	content.Alignment = fyne.TextAlignCenter
-	
+
 	mp.image.SetContent(content)
 	mp.container = container.NewVBox(mp.image)
 }
@@ -421,11 +490,11 @@ func (mp *MediaPreview) createVideoPreview(filePath string) {
 	subtitle := mp.formatFileSize(mp.mediaInfo.Size)
 
 	mp.videoIcon = widget.NewCard(title, subtitle, nil)
-	
+
 	// Show video icon placeholder
 	content := widget.NewLabel("🎬 " + title)
 	content.Alignment = fyne.TextAlignCenter
-	
+
 	mp.videoIcon.SetContent(content)
 	mp.container = container.NewVBox(mp.videoIcon)
 }
@@ -436,7 +505,7 @@ func (mp *MediaPreview) createGenericMediaPreview(filePath string) {
 	subtitle := mp.formatFileSize(mp.mediaInfo.Size)
 
 	card := widget.NewCard(title, subtitle, nil)
-	
+
 	// Show generic media icon
 	var icon string
 	switch mp.mediaInfo.Type {
@@ -445,10 +514,10 @@ func (mp *MediaPreview) createGenericMediaPreview(filePath string) {
 	default:
 		icon = "📄"
 	}
-	
+
 	content := widget.NewLabel(icon + " " + title)
 	content.Alignment = fyne.TextAlignCenter
-	
+
 	card.SetContent(content)
 	mp.container = container.NewVBox(card)
 }
@@ -459,10 +528,10 @@ func (mp *MediaPreview) createNonMediaPreview(filePath string) {
 	subtitle := "Non-media file"
 
 	card := widget.NewCard(title, subtitle, nil)
-	
+
 	content := widget.NewLabel("📎 " + title)
 	content.Alignment = fyne.TextAlignCenter
-	
+
 	card.SetContent(content)
 	mp.container = container.NewVBox(card)
 }
@@ -473,10 +542,10 @@ func (mp *MediaPreview) createErrorPreview(filePath string, err error) {
 	subtitle := "Failed to load preview"
 
 	card := widget.NewCard(title, subtitle, nil)
-	
+
 	content := widget.NewLabel("❌ " + title)
 	content.Alignment = fyne.TextAlignCenter
-	
+
 	card.SetContent(content)
 	mp.container = container.NewVBox(card)
 }

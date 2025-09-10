@@ -92,20 +92,29 @@ func (p *MockPlayer) Play(options PlaybackOptions, callback PlaybackCallback) er
 // simulatePlayback simulates audio playback
 func (p *MockPlayer) simulatePlayback() {
 	defer func() {
+		p.mu.Lock()
 		if p.ticker != nil {
 			p.ticker.Stop()
+			p.ticker = nil
 		}
+		p.mu.Unlock()
 	}()
 
-	if p.ctx == nil || p.ticker == nil {
+	// Get initial context and ticker under lock
+	p.mu.RLock()
+	ctx := p.ctx
+	ticker := p.ticker
+	p.mu.RUnlock()
+
+	if ctx == nil || ticker == nil {
 		return
 	}
 
 	for {
 		select {
-		case <-p.ctx.Done():
+		case <-ctx.Done():
 			return
-		case <-p.ticker.C:
+		case <-ticker.C:
 			p.mu.Lock()
 
 			if p.state != PlaybackStatePlaying {
@@ -134,10 +143,12 @@ func (p *MockPlayer) simulatePlayback() {
 				p.callback(p.position, p.duration)
 			}
 
+			shouldStop := p.position >= p.duration && p.options.AutoStop
+
 			p.mu.Unlock()
 
 			// Stop if reached end
-			if p.position >= p.duration && p.options.AutoStop {
+			if shouldStop {
 				return
 			}
 		}

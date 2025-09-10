@@ -2,6 +2,7 @@ package adaptive
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"fyne.io/fyne/v2/app"
@@ -256,6 +257,9 @@ func TestUI_CreateMainContent_Mobile(t *testing.T) {
 }
 
 func TestUI_LoadWindowState(t *testing.T) {
+	if os.Getenv("CI") == "true" || os.Getenv("DISPLAY") == "" {
+		t.Skip("Skipping GUI test in CI/headless environment")
+	}
 	// Create test app
 	testApp := app.New()
 

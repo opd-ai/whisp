@@ -14,7 +14,7 @@ Whisp is a secure, cross-platform messaging application built with Go that featu
 3. ✅ Implement voice message support (COMPLETED)
 4. ✅ Implement theme system (COMPLETED)
 5. ✅ Implement media preview functionality (COMPLETED)
-6. Implement P2P voice and video calls over Tox
+6. 📋 **Implement P2P voice and video calls over Tox** (see `docs/TOXAV_PLAN.md` for detailed roadmap)
 7. Platform-specific packaging and distribution
 
 ## Recent Completion: Media Preview Functionality (Task 17)
@@ -626,25 +626,19 @@ On September 9, 2025, successfully completed the comprehensive theme system impl
 #### 18. **P2P Voice and Video Calls over Tox**
    - Description: Implement real-time voice and video calling using Tox audio/video capabilities
    - Files affected: New `internal/core/calls/` package, `internal/core/tox/manager.go`, call UI components
-   - Dependencies: Tox audio/video API, audio/video capture libraries, codec support, UI controls
-   - Estimated time: 32 hours
+   - Dependencies: ToxAV library integration, audio/video capture libraries, codec support, UI controls
+   - Estimated time: 20-24 weeks (major multi-phase implementation)
    - Success criteria: Voice calls work reliably, video calls functional, call quality acceptable, cross-platform support
+   - **📋 Detailed Plan**: See `docs/TOXAV_PLAN.md` for comprehensive implementation roadmap
 
-**Implementation Details for Task 18**:
-- **Tox AV Integration**: Utilize Tox protocol's built-in audio/video calling capabilities
-- **Audio Processing**: Real-time audio capture, encoding, transmission, and playback
-- **Video Processing**: Camera access, video encoding/decoding, frame transmission
-- **Call Management**: Call initiation, acceptance, rejection, and termination logic
-- **UI Components**: Call interface with controls for mute, camera toggle, hang up
-- **Quality Control**: Adaptive bitrate, echo cancellation, noise suppression
-- **Cross-Platform**: Desktop and mobile camera/microphone access
-- **Security**: End-to-end encrypted audio/video streams via Tox protocol
+**Key Implementation Phases**:
+1. **ToxAV Core Integration** (3-4 weeks): Add ToxAV bindings to opd-ai/toxcore library
+2. **Audio/Video Codec Integration** (5 weeks): Implement Opus audio and VP8 video codecs
+3. **Call Management System** (3 weeks): Call state management and session handling
+4. **UI Integration** (9 weeks): Call interface components and platform-specific features
+5. **Quality & Performance Optimization** (4 weeks): Network adaptation and testing
 
-**Technical Libraries Needed**:
-- **Audio Capture**: Platform-specific audio input/output libraries
-- **Video Capture**: Camera access libraries for desktop and mobile
-- **Codecs**: Audio/video encoding libraries (Opus for audio, VP8/H.264 for video)
-- **UI Controls**: Call interface widgets and media preview components
+**Current Limitation**: The `github.com/opd-ai/toxcore` library does not yet include ToxAV (audio/video) functionality. Implementation requires coordinated development across both toxcore and whisp repositories.
 
 **Success Criteria for Task 18**:
 - ✅ Voice calls establish and maintain stable connection
@@ -996,12 +990,14 @@ Remaining items:
 - **Architecture**: ✅ Clean separation of concerns with proper interfaces
 
 ### 🎯 **Immediate Next Steps**
-1. **Phase 4, Task 18**: Implement P2P voice and video calls over Tox protocol
+1. **Phase 4, Task 18**: Implement P2P voice and video calls over Tox protocol (see `docs/TOXAV_PLAN.md`)
+   - **Next Action**: Begin ToxAV C library integration in opd-ai/toxcore repository
+   - **Estimated Timeline**: 20-24 weeks for complete implementation
+   - **Dependencies**: Requires coordinated development across toxcore and whisp repositories
 2. **Phase 5**: Platform-specific packaging and distribution
-3. **Phase 5**: Platform-specific packaging and distribution
-4. **Code Quality**: Continue test coverage expansion and documentation
-5. **Performance**: Optimize for mobile platforms and large datasets
+3. **Code Quality**: Continue test coverage expansion and documentation
+4. **Performance**: Optimize for mobile platforms and large datasets
 
-The project has excellent momentum with comprehensive advanced features now complete. The voice messaging and theme systems provide a modern user experience, and the application is ready for media preview implementation and final packaging.
+The project has excellent momentum with comprehensive advanced features now complete. The voice messaging, theme system, and media preview functionality provide a modern user experience. The next major milestone is implementing P2P voice and video calls, which requires significant cross-repository coordination as detailed in the ToxAV implementation plan.
 
 ```

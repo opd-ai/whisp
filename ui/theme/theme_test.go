@@ -288,7 +288,14 @@ func TestThemeManager(t *testing.T) {
 	})
 
 	t.Run("Preferences", func(t *testing.T) {
-		manager := NewDefaultThemeManager(tempDir)
+		// Create isolated temporary directory for this test
+		testTempDir, err := os.MkdirTemp("", "whisp_theme_test_preferences_*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(testTempDir)
+
+		manager := NewDefaultThemeManager(testTempDir)
 		app := test.NewApp()
 		manager.Initialize(app)
 
@@ -309,7 +316,7 @@ func TestThemeManager(t *testing.T) {
 			DarkThemeStart:    time.Date(0, 1, 1, 18, 0, 0, 0, time.UTC),
 		}
 
-		err := manager.SetPreferences(newPrefs)
+		err = manager.SetPreferences(newPrefs)
 		if err != nil {
 			t.Fatalf("Failed to set preferences: %v", err)
 		}
@@ -382,8 +389,15 @@ func TestThemeManager(t *testing.T) {
 	})
 
 	t.Run("PersistenceIntegration", func(t *testing.T) {
+		// Create isolated temporary directory for this test
+		testTempDir, err := os.MkdirTemp("", "whisp_theme_test_persistence_*")
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer os.RemoveAll(testTempDir)
+
 		// Test that preferences and custom themes are saved and loaded correctly
-		manager1 := NewDefaultThemeManager(tempDir)
+		manager1 := NewDefaultThemeManager(testTempDir)
 		app := test.NewApp()
 		manager1.Initialize(app)
 
@@ -398,7 +412,7 @@ func TestThemeManager(t *testing.T) {
 		manager1.SetTheme(ThemeDark)
 
 		// Create new manager instance to test loading
-		manager2 := NewDefaultThemeManager(tempDir)
+		manager2 := NewDefaultThemeManager(testTempDir)
 		manager2.Initialize(app)
 
 		// Check that preferences were loaded

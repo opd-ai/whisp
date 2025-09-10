@@ -35,6 +35,8 @@ require (
 	github.com/go-text/typesetting v0.1.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
+	github.com/gordonklaus/portaudio v0.0.0-20250206071425-98a94950218b // indirect
+	github.com/hraban/opus v0.0.0-20230925203106-0188a62cb302 // indirect
 	github.com/jackmordaunt/icns/v3 v3.0.1 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect

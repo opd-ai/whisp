@@ -14,6 +14,7 @@ import (
 	"github.com/opd-ai/whisp/internal/core/message"
 	"github.com/opd-ai/whisp/internal/core/security"
 	"github.com/opd-ai/whisp/internal/core/tox"
+	"github.com/opd-ai/whisp/internal/core/transfer"
 	"github.com/opd-ai/whisp/internal/storage"
 	"github.com/opd-ai/whisp/ui/adaptive"
 )
@@ -35,6 +36,7 @@ type App struct {
 	contacts      *contact.Manager
 	messages      *message.Manager
 	security      *security.Manager
+	transfers     *transfer.Manager
 	notifications *NotificationService
 
 	mu       sync.RWMutex
@@ -81,6 +83,17 @@ func NewApp(config *Config) (*App, error) {
 	// Initialize message manager
 	messageMgr := message.NewManager(db, toxMgr, contactMgr)
 
+	// Initialize file transfer manager
+	transferMgr, err := transfer.NewManager(config.DataDir)
+	if err != nil {
+		db.Close()
+		securityMgr.Cleanup()
+		return nil, fmt.Errorf("failed to initialize file transfer manager: %w", err)
+	}
+
+	// Connect transfer manager to Tox
+	transferMgr.SetToxManager(toxMgr)
+
 	app := &App{
 		config:    config,
 		configMgr: configMgr,
@@ -89,6 +102,7 @@ func NewApp(config *Config) (*App, error) {
 		contacts:  contactMgr,
 		messages:  messageMgr,
 		security:  securityMgr,
+		transfers: transferMgr,
 		shutdown:  make(chan struct{}),
 	}
 
@@ -208,6 +222,11 @@ func (a *App) GetSecurity() *security.Manager {
 	return a.security
 }
 
+// GetTransfers returns the file transfer manager
+func (a *App) GetTransfers() *transfer.Manager {
+	return a.transfers
+}
+
 // GetConfigManager returns the configuration manager
 func (a *App) GetConfigManager() *configpkg.Manager {
 	return a.configMgr
@@ -225,12 +244,52 @@ func (a *App) SendMessageFromUI(friendID uint32, content string) error {
 
 // AddContactFromUI adds a contact from the UI
 func (a *App) AddContactFromUI(toxID, message string) error {
-	if toxID == "" {
-		return fmt.Errorf("Tox ID cannot be empty")
+	log.Printf("Adding contact from UI: %s", toxID)
+
+	// Validate Tox ID format (basic validation)
+	if len(toxID) != 76 {
+		return fmt.Errorf("invalid Tox ID length: expected 76 characters, got %d", len(toxID))
 	}
 
+	// Add contact through contact manager
 	_, err := a.contacts.AddContact(toxID, message)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to add contact: %w", err)
+	}
+
+	return nil
+}
+
+// SendFileFromUI initiates a file transfer from the UI
+func (a *App) SendFileFromUI(friendID uint32, filePath string) (string, error) {
+	log.Printf("Sending file from UI: friend=%d, file=%s", friendID, filePath)
+
+	// Create file transfer through transfer manager
+	transfer, err := a.transfers.SendFile(friendID, filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file transfer: %w", err)
+	}
+
+	// Start the transfer
+	if err := a.transfers.StartSend(transfer, a.tox); err != nil {
+		return "", fmt.Errorf("failed to start file transfer: %w", err)
+	}
+
+	return transfer.ID, nil
+}
+
+// AcceptFileFromUI accepts an incoming file transfer from the UI
+func (a *App) AcceptFileFromUI(transferID, saveDir string) error {
+	log.Printf("Accepting file transfer from UI: transfer=%s, saveDir=%s", transferID, saveDir)
+
+	return a.transfers.AcceptIncomingFile(transferID, saveDir)
+}
+
+// CancelFileFromUI cancels a file transfer from the UI
+func (a *App) CancelFileFromUI(transferID string) error {
+	log.Printf("Cancelling file transfer from UI: transfer=%s", transferID)
+
+	return a.transfers.CancelTransfer(transferID, a.tox)
 }
 
 // mainLoop runs the main application loop

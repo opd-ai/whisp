@@ -84,7 +84,7 @@ Handles all message-related operations including sending, receiving, storage, an
 - Message sending with delivery tracking
 - Incoming message processing
 - Message history management
-- Search and filtering
+- ✅ **High-performance search** with SQLite FTS5 and LIKE fallback (<100ms performance)
 - Message editing and deletion
 - File attachment handling
 
@@ -93,7 +93,7 @@ Handles all message-related operations including sending, receiving, storage, an
 type MessageManager interface {
     SendMessage(friendID uint32, content string, msgType MessageType) (*Message, error)
     GetMessages(friendID uint32, limit, offset int) ([]*Message, error)
-    SearchMessages(query string) ([]*Message, error)
+    SearchMessages(query string, limit int) ([]*Message, error) // ✅ FTS5 optimized
     EditMessage(messageID int64, newContent string) error
     DeleteMessage(messageID int64) error
 }
@@ -372,7 +372,7 @@ Master Key (Platform Keystore)
 ### Message History
 - **Pagination**: Efficient message loading
 - **Archiving**: Automatic old message cleanup
-- **Search Indexing**: FTS for message search
+- **Search Indexing**: ✅ **IMPLEMENTED** - SQLite FTS5 with graceful fallback for high-performance search (<100ms)
 - **Backup Strategy**: Incremental backups
 
 ### Contact Management

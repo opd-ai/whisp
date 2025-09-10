@@ -114,7 +114,7 @@ whisp/
 #### 📋 Enhanced User Experience
 - [ ] QR code contact exchange
 - [ ] Contact verification methods
-- [ ] Message search functionality
+- [x] Message search functionality ✅ COMPLETED (SQLite FTS5 with fallback)
 - [ ] Conversation archiving
 - [ ] Bulk message operations
 - [ ] Disappearing messages
@@ -162,7 +162,7 @@ The architecture uses clean interfaces to separate concerns:
 
 - **ToxManager**: Protocol operations (send, receive, friend management)
 - **ContactManager**: Contact storage and status tracking  
-- **MessageManager**: Message handling, history, search
+- **MessageManager**: Message handling, history, high-performance FTS search
 - **SecurityManager**: Encryption, authentication, key management
 
 #### Data Flow

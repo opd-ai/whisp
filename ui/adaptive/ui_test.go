@@ -294,6 +294,9 @@ func TestUI_LoadWindowState(t *testing.T) {
 }
 
 func TestUI_SaveWindowState(t *testing.T) {
+	if os.Getenv("CI") == "true" || os.Getenv("DISPLAY") == "" {
+		t.Skip("Skipping GUI test in CI/headless environment")
+	}
 	// Create test app
 	testApp := app.New()
 

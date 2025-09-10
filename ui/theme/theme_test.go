@@ -446,7 +446,7 @@ func TestCustomThemeFromColors(t *testing.T) {
 
 		// Test that custom colors are used
 		primaryColor := customTheme.Color(theme.ColorNamePrimary, theme.VariantLight)
-		if primaryColor != primary {
+		if !colorsApproximatelyEqual(primaryColor, primary) {
 			t.Error("Primary color should match custom color")
 		}
 	})

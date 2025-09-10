@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/test"
 	"github.com/opd-ai/whisp/internal/core/config"
 	"github.com/opd-ai/whisp/internal/core/contact"
+	"github.com/opd-ai/whisp/internal/core/media"
 	"github.com/opd-ai/whisp/internal/core/message"
 )
 
@@ -37,6 +38,29 @@ func (m *MockCoreApp) GetContacts() *contact.Manager {
 
 func (m *MockCoreApp) GetConfigManager() *config.Manager {
 	return nil // Simple mock
+}
+
+// Media-related methods for testing
+func (m *MockCoreApp) GetMediaInfoFromUI(filePath string) (*media.MediaInfo, error) {
+	return &media.MediaInfo{
+		Type:     media.MediaTypeImage,
+		Width:    200,
+		Height:   150,
+		Size:     1024,
+		MimeType: "image/jpeg",
+	}, nil
+}
+
+func (m *MockCoreApp) GenerateThumbnailFromUI(filePath string, maxWidth, maxHeight int) (string, error) {
+	return "/tmp/test_thumbnail.jpg", nil
+}
+
+func (m *MockCoreApp) IsMediaFileFromUI(filePath string) bool {
+	return true // For testing, assume all files are media files
+}
+
+func (m *MockCoreApp) GetThumbnailPathFromUI(filePath string, maxWidth, maxHeight int) (string, bool) {
+	return "/tmp/test_thumbnail.jpg", true
 }
 
 // TestChatViewCreation tests that ChatView can be created

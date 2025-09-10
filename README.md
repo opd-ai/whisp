@@ -19,7 +19,7 @@ A secure, cross-platform messaging ap### 🎨 Modern Interface
 ![Platform Support](https://img.shields.io/badge/platforms-windows%20%7C%20macos%20%7C%20linux%20%7C%20android%20%7C%20ios-lightgrey.svg)
 ![Build Status](https://img.shields.io/badge/build-demo--ready-green.svg)
 
-## 🎯 Project Status: Advanced Features Complete - 92% Done
+## 🎯 Project Status: Media Preview Complete - 95% Done
 
 This repository contains a **production-ready implementation** of the Whisp cross-platform messenger with comprehensive features. The codebase includes:
 
@@ -32,6 +32,7 @@ This repository contains a **production-ready implementation** of the Whisp cros
 - ✅ **File transfer system** with progress tracking and resumable downloads
 - ✅ **Voice message system** with recording, playbook, and waveform visualization
 - ✅ **Theme system** with light/dark/custom themes and system detection
+- ✅ **Media preview system** with thumbnail generation and inline image/video display
 - ✅ **High-performance message search** with SQLite FTS5 and graceful fallback
 - ✅ **Platform-specific notifications** with native OS integration and privacy controls
 - ✅ **Comprehensive test suite** with >85% code coverage
@@ -86,6 +87,7 @@ go run ./cmd/demo-chat         # Basic messaging functionality
 go run ./cmd/demo-voice        # Voice message recording and playback
 go run ./cmd/demo-theme        # Theme system with light/dark/custom themes
 go run ./cmd/demo-transfer     # File transfer with progress tracking
+go run ./cmd/demo-media        # Image/video preview and thumbnail generation
 go run ./cmd/demo-encryption   # Security and encryption features
 go run ./cmd/demo-notifications # Cross-platform notification system
 ```
@@ -163,6 +165,7 @@ whisp/
 | **File Transfer System** | ✅ Complete | Send/receive files with progress tracking |
 | **Voice Message System** | ✅ Complete | Recording, playback, waveform visualization |
 | **Theme System** | ✅ Complete | Light/dark/custom themes, system detection |
+| **Media Preview System** | ✅ Complete | Image/video thumbnails, inline display |
 | **Notification System** | ✅ Complete | Cross-platform native notifications |
 | **Build System** | ✅ Complete | Cross-platform builds and packaging |
 | **Tox Integration** | ✅ Complete | Full toxcore integration with state management |

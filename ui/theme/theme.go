@@ -282,10 +282,10 @@ func CreateThemeTransition(from, to *WhispTheme, steps int) []*WhispTheme {
 		factor := float64(i) / float64(steps-1)
 
 		scheme := ColorScheme{
-			Primary:    NewSerializableColor(InterpolateColor(from.scheme.Primary.ToColor(), to.scheme.Primary.ToColor(), factor)),
-			Secondary:  NewSerializableColor(InterpolateColor(from.scheme.Secondary.ToColor(), to.scheme.Secondary.ToColor(), factor)),
-			Background: NewSerializableColor(InterpolateColor(from.scheme.Background.ToColor(), to.scheme.Background.ToColor(), factor)),
-			Surface:    NewSerializableColor(InterpolateColor(from.scheme.Surface.ToColor(), to.scheme.Surface.ToColor(), factor)),
+			Primary:    NewSerializableColor(InterpolateColor(from.scheme.Primary, to.scheme.Primary, factor)),
+			Secondary:  NewSerializableColor(InterpolateColor(from.scheme.Secondary, to.scheme.Secondary, factor)),
+			Background: NewSerializableColor(InterpolateColor(from.scheme.Background, to.scheme.Background, factor)),
+			Surface:    NewSerializableColor(InterpolateColor(from.scheme.Surface, to.scheme.Surface, factor)),
 			// Interpolate other colors as needed
 		}
 

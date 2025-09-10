@@ -36,30 +36,30 @@ func TestColorSchemes(t *testing.T) {
 	t.Run("LightColorScheme", func(t *testing.T) {
 		scheme := LightColorScheme
 
-		// Verify primary colors are set
-		if scheme.Primary == nil {
-			t.Error("Primary color should not be nil")
+		// Verify primary colors are set (check that they're not zero values)
+		if scheme.Primary == (SerializableColor{}) {
+			t.Error("Primary color should not be zero value")
 		}
-		if scheme.Background == nil {
-			t.Error("Background color should not be nil")
+		if scheme.Background == (SerializableColor{}) {
+			t.Error("Background color should not be zero value")
 		}
-		if scheme.OnBackground == nil {
-			t.Error("OnBackground color should not be nil")
+		if scheme.OnBackground == (SerializableColor{}) {
+			t.Error("OnBackground color should not be zero value")
 		}
 	})
 
 	t.Run("DarkColorScheme", func(t *testing.T) {
 		scheme := DarkColorScheme
 
-		// Verify primary colors are set
-		if scheme.Primary == nil {
-			t.Error("Primary color should not be nil")
+		// Verify primary colors are set (check that they're not zero values)
+		if scheme.Primary == (SerializableColor{}) {
+			t.Error("Primary color should not be zero value")
 		}
-		if scheme.Background == nil {
-			t.Error("Background color should not be nil")
+		if scheme.Background == (SerializableColor{}) {
+			t.Error("Background color should not be zero value")
 		}
-		if scheme.OnBackground == nil {
-			t.Error("OnBackground color should not be nil")
+		if scheme.OnBackground == (SerializableColor{}) {
+			t.Error("OnBackground color should not be zero value")
 		}
 	})
 }
@@ -236,14 +236,14 @@ func TestThemeManager(t *testing.T) {
 			Name:        "Test Theme",
 			Description: "A test theme",
 			ColorScheme: ColorScheme{
-				Primary:      color.NRGBA{R: 255, G: 0, B: 0, A: 255},
-				Secondary:    color.NRGBA{R: 0, G: 255, B: 0, A: 255},
-				Background:   color.NRGBA{R: 255, G: 255, B: 255, A: 255},
-				Surface:      color.NRGBA{R: 248, G: 248, B: 248, A: 255},
-				OnPrimary:    color.NRGBA{R: 255, G: 255, B: 255, A: 255},
-				OnSecondary:  color.NRGBA{R: 255, G: 255, B: 255, A: 255},
-				OnBackground: color.NRGBA{R: 0, G: 0, B: 0, A: 255},
-				OnSurface:    color.NRGBA{R: 0, G: 0, B: 0, A: 255},
+				Primary:      NewSerializableColorFromRGBA(255, 0, 0, 255),
+				Secondary:    NewSerializableColorFromRGBA(0, 255, 0, 255),
+				Background:   NewSerializableColorFromRGBA(255, 255, 255, 255),
+				Surface:      NewSerializableColorFromRGBA(248, 248, 248, 255),
+				OnPrimary:    NewSerializableColorFromRGBA(255, 255, 255, 255),
+				OnSecondary:  NewSerializableColorFromRGBA(255, 255, 255, 255),
+				OnBackground: NewSerializableColorFromRGBA(0, 0, 0, 255),
+				OnSurface:    NewSerializableColorFromRGBA(0, 0, 0, 255),
 			},
 		}
 

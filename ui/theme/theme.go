@@ -54,69 +54,69 @@ func (t *WhispTheme) Color(name fyne.ThemeColorName, variant fyne.ThemeVariant) 
 	switch name {
 	// Primary colors
 	case theme.ColorNamePrimary:
-		return t.scheme.Primary
+		return t.scheme.Primary.ToColor()
 	case theme.ColorNameBackground:
-		return t.scheme.Background
+		return t.scheme.Background.ToColor()
 	case theme.ColorNameForeground:
-		return t.scheme.OnBackground
+		return t.scheme.OnBackground.ToColor()
 
 	// Surface colors
 	case theme.ColorNameButton:
-		return t.scheme.Surface
+		return t.scheme.Surface.ToColor()
 	case theme.ColorNameDisabledButton:
-		return t.scheme.Disabled
+		return t.scheme.Disabled.ToColor()
 	case theme.ColorNameMenuBackground:
-		return t.scheme.Surface
+		return t.scheme.Surface.ToColor()
 	case theme.ColorNameOverlayBackground:
-		return t.scheme.SurfaceVariant
+		return t.scheme.SurfaceVariant.ToColor()
 
 	// Text colors
 	case theme.ColorNameDisabled:
-		return t.scheme.Disabled
+		return t.scheme.Disabled.ToColor()
 	case theme.ColorNameError:
-		return t.scheme.Error
+		return t.scheme.Error.ToColor()
 	case theme.ColorNameFocus:
-		return t.scheme.Primary
+		return t.scheme.Primary.ToColor()
 	case theme.ColorNameHover:
-		return t.scheme.Highlight
+		return t.scheme.Highlight.ToColor()
 	case theme.ColorNamePlaceHolder:
-		return t.scheme.Disabled
+		return t.scheme.Disabled.ToColor()
 	case theme.ColorNamePressed:
-		return t.scheme.Primary
+		return t.scheme.Primary.ToColor()
 	case theme.ColorNameSelection:
-		return t.scheme.Highlight
+		return t.scheme.Highlight.ToColor()
 
 	// Input colors
 	case theme.ColorNameInputBackground:
-		return t.scheme.Surface
+		return t.scheme.Surface.ToColor()
 	case theme.ColorNameInputBorder:
-		return t.scheme.Border
+		return t.scheme.Border.ToColor()
 
 	// Header colors
 	case theme.ColorNameHeaderBackground:
-		return t.scheme.Primary
+		return t.scheme.Primary.ToColor()
 
 	// Separator colors
 	case theme.ColorNameSeparator:
-		return t.scheme.Divider
+		return t.scheme.Divider.ToColor()
 
 	// Scrollbar colors
 	case theme.ColorNameScrollBar:
-		return t.scheme.Border
+		return t.scheme.Border.ToColor()
 
 	// Shadow colors
 	case theme.ColorNameShadow:
-		return t.scheme.Shadow
+		return t.scheme.Shadow.ToColor()
 
 	// Success and warning colors
 	case theme.ColorNameSuccess:
-		return t.scheme.Success
+		return t.scheme.Success.ToColor()
 	case theme.ColorNameWarning:
-		return t.scheme.Warning
+		return t.scheme.Warning.ToColor()
 
 	// Hyperlink colors
 	case theme.ColorNameHyperlink:
-		return t.scheme.Primary
+		return t.scheme.Primary.ToColor()
 
 	default:
 		// Fallback to Fyne's default theme
@@ -225,30 +225,30 @@ func CreateCustomThemeFromColors(
 	isDark bool,
 ) *WhispTheme {
 	scheme := ColorScheme{
-		Primary:    primary,
-		Secondary:  secondary,
-		Background: background,
-		Surface:    surface,
+		Primary:    NewSerializableColor(primary),
+		Secondary:  NewSerializableColor(secondary),
+		Background: NewSerializableColor(background),
+		Surface:    NewSerializableColor(surface),
 		// Set reasonable defaults for other colors
-		Success: color.NRGBA{R: 76, G: 175, B: 80, A: 255},
-		Warning: color.NRGBA{R: 255, G: 152, B: 0, A: 255},
-		Error:   color.NRGBA{R: 244, G: 67, B: 54, A: 255},
-		Info:    color.NRGBA{R: 33, G: 150, B: 243, A: 255},
+		Success: NewSerializableColorFromRGBA(76, 175, 80, 255),
+		Warning: NewSerializableColorFromRGBA(255, 152, 0, 255),
+		Error:   NewSerializableColorFromRGBA(244, 67, 54, 255),
+		Info:    NewSerializableColorFromRGBA(33, 150, 243, 255),
 	}
 
 	// Set text colors based on whether it's a dark theme
 	if isDark {
-		scheme.OnPrimary = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
-		scheme.OnSecondary = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
-		scheme.OnBackground = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-		scheme.OnSurface = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-		scheme.OnError = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
+		scheme.OnPrimary = NewSerializableColorFromRGBA(0, 0, 0, 255)
+		scheme.OnSecondary = NewSerializableColorFromRGBA(0, 0, 0, 255)
+		scheme.OnBackground = NewSerializableColorFromRGBA(255, 255, 255, 255)
+		scheme.OnSurface = NewSerializableColorFromRGBA(255, 255, 255, 255)
+		scheme.OnError = NewSerializableColorFromRGBA(0, 0, 0, 255)
 	} else {
-		scheme.OnPrimary = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-		scheme.OnSecondary = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
-		scheme.OnBackground = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
-		scheme.OnSurface = color.NRGBA{R: 0, G: 0, B: 0, A: 255}
-		scheme.OnError = color.NRGBA{R: 255, G: 255, B: 255, A: 255}
+		scheme.OnPrimary = NewSerializableColorFromRGBA(255, 255, 255, 255)
+		scheme.OnSecondary = NewSerializableColorFromRGBA(255, 255, 255, 255)
+		scheme.OnBackground = NewSerializableColorFromRGBA(0, 0, 0, 255)
+		scheme.OnSurface = NewSerializableColorFromRGBA(0, 0, 0, 255)
+		scheme.OnError = NewSerializableColorFromRGBA(255, 255, 255, 255)
 	}
 
 	return NewWhispTheme(scheme, isDark)
@@ -282,10 +282,10 @@ func CreateThemeTransition(from, to *WhispTheme, steps int) []*WhispTheme {
 		factor := float64(i) / float64(steps-1)
 
 		scheme := ColorScheme{
-			Primary:    InterpolateColor(from.scheme.Primary, to.scheme.Primary, factor),
-			Secondary:  InterpolateColor(from.scheme.Secondary, to.scheme.Secondary, factor),
-			Background: InterpolateColor(from.scheme.Background, to.scheme.Background, factor),
-			Surface:    InterpolateColor(from.scheme.Surface, to.scheme.Surface, factor),
+			Primary:    NewSerializableColor(InterpolateColor(from.scheme.Primary.ToColor(), to.scheme.Primary.ToColor(), factor)),
+			Secondary:  NewSerializableColor(InterpolateColor(from.scheme.Secondary.ToColor(), to.scheme.Secondary.ToColor(), factor)),
+			Background: NewSerializableColor(InterpolateColor(from.scheme.Background.ToColor(), to.scheme.Background.ToColor(), factor)),
+			Surface:    NewSerializableColor(InterpolateColor(from.scheme.Surface.ToColor(), to.scheme.Surface.ToColor(), factor)),
 			// Interpolate other colors as needed
 		}
 

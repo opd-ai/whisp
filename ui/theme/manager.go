@@ -405,8 +405,8 @@ func (tm *DefaultThemeManager) updateCurrentTheme() error {
 
 func (tm *DefaultThemeManager) isDarkScheme(scheme ColorScheme) bool {
 	// Simple heuristic: if background is darker than foreground, it's a dark theme
-	r1, g1, b1, _ := scheme.Background.RGBA()
-	r2, g2, b2, _ := scheme.OnBackground.RGBA()
+	r1, g1, b1, _ := scheme.Background.ToColor().RGBA()
+	r2, g2, b2, _ := scheme.OnBackground.ToColor().RGBA()
 
 	bgBrightness := (r1 + g1 + b1) / 3
 	fgBrightness := (r2 + g2 + b2) / 3

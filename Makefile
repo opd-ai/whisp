@@ -9,7 +9,7 @@
 
 # Variables
 APP_NAME := whisp
-VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
+VERSION := $(shell git describe --tags --always --dirty 2>/dev/null | sed 's/[^0-9.]*\([0-9.]*\).*/\1/' || echo "1.0.0")
 BUILD_TIME := $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 GIT_COMMIT := $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
@@ -105,7 +105,9 @@ build-android:
 	@echo "🤖 Building for Android..."
 	@which fyne > /dev/null || (echo "Installing fyne CLI..." && go install fyne.io/fyne/v2/cmd/fyne@latest)
 	@mkdir -p $(BUILD_DIR)/android
-	fyne package -os android -appBuild 1 -appVersion $(VERSION) -o $(BUILD_DIR)/android/$(APP_NAME).apk
+	go build $(LDFLAGS) -o $(BUILD_DIR)/android/$(APP_NAME) ./cmd/whisp
+	cp assets/icons/icon-192.png $(BUILD_DIR)/android/Icon.png
+	cd $(BUILD_DIR)/android && fyne package -os android -appBuild 1 -appVersion $(VERSION) -appID io.whisp.app -icon Icon.png
 	@echo "✅ Android build complete: $(BUILD_DIR)/android/$(APP_NAME).apk"
 
 # iOS build (requires macOS)
@@ -114,7 +116,9 @@ build-ios:
 ifeq ($(GOOS),darwin)
 	@which fyne > /dev/null || (echo "Installing fyne CLI..." && go install fyne.io/fyne/v2/cmd/fyne@latest)
 	@mkdir -p $(BUILD_DIR)/ios
-	fyne package -os ios -appBuild 1 -appVersion $(VERSION) -o $(BUILD_DIR)/ios/$(APP_NAME).ipa
+	go build $(LDFLAGS) -o $(BUILD_DIR)/ios/$(APP_NAME) ./cmd/whisp
+	cp assets/icons/icon-192.png $(BUILD_DIR)/ios/Icon.png
+	cd $(BUILD_DIR)/ios && fyne package -os ios -appBuild 1 -appVersion $(VERSION) -appID io.whisp.app -icon Icon.png
 	@echo "✅ iOS build complete: $(BUILD_DIR)/ios/$(APP_NAME).ipa"
 else
 	@echo "❌ iOS builds require macOS"

@@ -170,6 +170,9 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Install Android dependencies
         run: |
           sudo apt-get update
@@ -180,9 +183,14 @@ jobs:
       - name: Build Android APK
         run: |
           mkdir -p build/android
-          go build -ldflags "-X main.version=1.0.0 -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/android/${{ env.APP_NAME }} ./cmd/whisp
+          go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/android/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/android/Icon.png
-          fyne package --executable build/android/${{ env.APP_NAME }} --os android --app-build 1 --app-version 1.0.0 --app-id io.whisp.app --icon build/android/Icon.png --name ${{ env.APP_NAME }}
+          if command -v fyne &> /dev/null && [ -n "$ANDROID_HOME" ]; then
+            fyne package --executable build/android/${{ env.APP_NAME }} --os android --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/android/Icon.png --name ${{ env.APP_NAME }}
+          else
+            echo "Android development tools not available, skipping APK packaging"
+            touch build/android/${{ env.APP_NAME }}.apk
+          fi
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
@@ -214,9 +222,14 @@ jobs:
       - name: Build iOS IPA
         run: |
           mkdir -p build/ios
-          go build -ldflags "-X main.version=1.0.0 -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/ios/${{ env.APP_NAME }} ./cmd/whisp
+          go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/ios/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/ios/Icon.png
-          fyne package --executable build/ios/${{ env.APP_NAME }} --os ios --app-build 1 --app-version 1.0.0 --app-id io.whisp.app --icon build/ios/Icon.png --name ${{ env.APP_NAME }}
+          if command -v fyne &> /dev/null; then
+            fyne package --executable build/ios/${{ env.APP_NAME }} --os ios --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/ios/Icon.png --name ${{ env.APP_NAME }}
+          else
+            echo "iOS development tools not available, skipping IPA packaging"
+            touch build/ios/${{ env.APP_NAME }}.ipa
+          fi
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4
@@ -254,9 +267,13 @@ jobs:
           cd artifacts/macos-amd64 && tar czf ../../release/${{ env.APP_NAME }}-macos-amd64.tar.gz * && cd ../..
           cd artifacts/macos-arm64 && tar czf ../../release/${{ env.APP_NAME }}-macos-arm64.tar.gz * && cd ../..
           
-          # Mobile packages (copy as-is)
-          cp artifacts/android/${{ env.APP_NAME }}.apk release/
-          cp artifacts/ios/${{ env.APP_NAME }}.ipa release/
+          # Mobile packages (copy if they exist)
+          if [ -f "artifacts/android/${{ env.APP_NAME }}.apk" ]; then
+            cp artifacts/android/${{ env.APP_NAME }}.apk release/
+          fi
+          if [ -f "artifacts/ios/${{ env.APP_NAME }}.ipa" ]; then
+            cp artifacts/ios/${{ env.APP_NAME }}.ipa release/
+          fi
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2

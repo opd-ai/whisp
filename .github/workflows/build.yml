@@ -209,13 +209,14 @@ jobs:
       - name: Install iOS dependencies
         run: |
           make deps
-          go install fyne.io/fyne/v2/cmd/fyne@latest
+          go install fyne.io/tools/cmd/fyne@latest
 
       - name: Build iOS IPA
         run: |
           mkdir -p build/ios
-          cp assets/icons/icon-192.png Icon.png
-          fyne package -os ios -appBuild 1 -appVersion "${GITHUB_REF#refs/*/}" -appID io.whisp.app -icon Icon.png -o build/ios/${{ env.APP_NAME }}.ipa ./cmd/whisp
+          go build -ldflags "-X main.version=1.0.0 -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/ios/${{ env.APP_NAME }} ./cmd/whisp
+          cp assets/icons/icon-192.png build/ios/Icon.png
+          cd build/ios && fyne package -os ios -appBuild 1 -appVersion 1.0.0 -appID io.whisp.app -icon Icon.png
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4

@@ -185,10 +185,24 @@ jobs:
           mkdir -p build/android
           go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/android/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/android/Icon.png
-          if command -v fyne &> /dev/null && [ -n "$ANDROID_HOME" ]; then
+          # Check if Android SDK is available by looking for sdkmanager
+          if command -v fyne &> /dev/null && command -v sdkmanager &> /dev/null; then
+            echo "Android SDK detected, building APK..."
             fyne package --executable build/android/${{ env.APP_NAME }} --os android --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/android/Icon.png --name ${{ env.APP_NAME }}
+            # Verify APK was created
+            if [ -f "${{ env.APP_NAME }}.apk" ]; then
+              mv ${{ env.APP_NAME }}.apk build/android/
+              echo "✅ Android APK built successfully"
+            else
+              echo "❌ APK file not found after packaging"
+              exit 1
+            fi
           else
-            echo "Android development tools not available, skipping APK packaging"
+            echo "⚠️  Android development tools not available, skipping APK packaging"
+            echo "Available commands:"
+            command -v fyne || echo "  - fyne: not found"
+            command -v sdkmanager || echo "  - sdkmanager: not found"
+            echo "ANDROID_HOME: $ANDROID_HOME"
             touch build/android/${{ env.APP_NAME }}.apk
           fi
 
@@ -224,10 +238,23 @@ jobs:
           mkdir -p build/ios
           go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/ios/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/ios/Icon.png
-          if command -v fyne &> /dev/null; then
+          # Check if iOS development tools are available
+          if command -v fyne &> /dev/null && [ -d "/Applications/Xcode.app" ]; then
+            echo "iOS development tools detected, building IPA..."
             fyne package --executable build/ios/${{ env.APP_NAME }} --os ios --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/ios/Icon.png --name ${{ env.APP_NAME }}
+            # Verify IPA was created
+            if [ -f "${{ env.APP_NAME }}.ipa" ]; then
+              mv ${{ env.APP_NAME }}.ipa build/ios/
+              echo "✅ iOS IPA built successfully"
+            else
+              echo "❌ IPA file not found after packaging"
+              exit 1
+            fi
           else
-            echo "iOS development tools not available, skipping IPA packaging"
+            echo "⚠️  iOS development tools not available, skipping IPA packaging"
+            echo "Available commands:"
+            command -v fyne || echo "  - fyne: not found"
+            [ -d "/Applications/Xcode.app" ] && echo "  - Xcode: found" || echo "  - Xcode: not found"
             touch build/ios/${{ env.APP_NAME }}.ipa
           fi
 
@@ -267,12 +294,18 @@ jobs:
           cd artifacts/macos-amd64 && tar czf ../../release/${{ env.APP_NAME }}-macos-amd64.tar.gz * && cd ../..
           cd artifacts/macos-arm64 && tar czf ../../release/${{ env.APP_NAME }}-macos-arm64.tar.gz * && cd ../..
           
-          # Mobile packages (copy if they exist)
-          if [ -f "artifacts/android/${{ env.APP_NAME }}.apk" ]; then
+          # Mobile packages (copy if they exist and are not empty placeholder files)
+          if [ -f "artifacts/android/${{ env.APP_NAME }}.apk" ] && [ -s "artifacts/android/${{ env.APP_NAME }}.apk" ]; then
             cp artifacts/android/${{ env.APP_NAME }}.apk release/
+            echo "✅ Android APK included in release"
+          else
+            echo "⚠️  Android APK not available or is placeholder file, skipping"
           fi
-          if [ -f "artifacts/ios/${{ env.APP_NAME }}.ipa" ]; then
+          if [ -f "artifacts/ios/${{ env.APP_NAME }}.ipa" ] && [ -s "artifacts/ios/${{ env.APP_NAME }}.ipa" ]; then
             cp artifacts/ios/${{ env.APP_NAME }}.ipa release/
+            echo "✅ iOS IPA included in release"
+          else
+            echo "⚠️  iOS IPA not available or is placeholder file, skipping"
           fi
 
       - name: Upload release assets

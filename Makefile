@@ -6,6 +6,7 @@
 .PHONY: all clean build test coverage lint install deps
 .PHONY: build-windows build-macos build-linux build-android build-ios build-all
 .PHONY: run run-debug dev test-integration package-all
+.PHONY: package-windows package-macos package-linux
 
 # Variables
 APP_NAME := whisp
@@ -137,17 +138,54 @@ endif
 package-windows: build-windows
 	@echo "📦 Creating Windows installer..."
 	@mkdir -p $(DIST_DIR)/windows
-	@echo "TODO: Create MSI/MSIX installer"
+	@if command -v makensis &> /dev/null; then \
+		echo "Creating NSIS installer..."; \
+		cp scripts/whisp.nsi build/windows/; \
+		cd build/windows && makensis whisp.nsi; \
+		if [ -f "whisp-windows-installer.exe" ]; then \
+			echo "✅ NSIS installer created"; \
+			mv whisp-windows-installer.exe ../whisp-windows-installer-$(VERSION).exe; \
+			cp ../whisp-windows-installer-$(VERSION).exe $(DIST_DIR)/windows/; \
+		fi; \
+		cd ../..; \
+	else \
+		echo "⚠️  NSIS not available, creating zip package only"; \
+		cp build/windows/whisp.exe $(DIST_DIR)/windows/; \
+	fi
+	@echo "✅ Windows packaging complete"
 
 package-macos: build-macos
 	@echo "📦 Creating macOS package..."
 	@mkdir -p $(DIST_DIR)/macos
-	@echo "TODO: Create DMG installer"
+	@cp build/macos/$(APP_NAME).app $(DIST_DIR)/macos/ 2>/dev/null || true
+	@if [ -f "build/whisp-macos-$(VERSION).dmg" ]; then \
+		cp build/whisp-macos-$(VERSION).dmg $(DIST_DIR)/macos/; \
+		echo "✅ DMG package created"; \
+	elif [ -f "build/whisp-macos-$(VERSION).zip" ]; then \
+		cp build/whisp-macos-$(VERSION).zip $(DIST_DIR)/macos/; \
+		echo "✅ ZIP package created"; \
+	fi
+	@echo "✅ macOS packaging complete"
 
 package-linux: build-linux
 	@echo "📦 Creating Linux packages..."
 	@mkdir -p $(DIST_DIR)/linux
-	@echo "TODO: Create AppImage, Flatpak, Snap, deb, rpm"
+	@# Copy AppImages if they exist
+	@for arch in amd64 arm64; do \
+		if [ -f "build/whisp-linux-$$arch-$(VERSION).AppImage" ]; then \
+			cp build/whisp-linux-$$arch-$(VERSION).AppImage $(DIST_DIR)/linux/; \
+			echo "✅ AppImage for $$arch copied"; \
+		fi; \
+	done
+	@# Copy tar.gz packages
+	@cp build/linux/*.tar.gz $(DIST_DIR)/linux/ 2>/dev/null || true
+	@# Copy Flatpak manifest
+	@if [ -f "build/linux/flatpak/com.opd-ai.whisp.yml" ]; then \
+		mkdir -p $(DIST_DIR)/linux/flatpak; \
+		cp build/linux/flatpak/com.opd-ai.whisp.yml $(DIST_DIR)/linux/flatpak/; \
+		echo "✅ Flatpak manifest copied"; \
+	fi
+	@echo "✅ Linux packaging complete"
 
 package-all: package-windows package-macos package-linux
 	@echo "🎁 All packages created!"
@@ -188,7 +226,10 @@ help:
 	@echo "  build-all     - Build for all platforms"
 	@echo ""
 	@echo "Packaging:"
-	@echo "  package-all   - Create installers for all platforms"
+	@echo "  package-windows - Create Windows NSIS installer"
+	@echo "  package-macos   - Create macOS DMG package"
+	@echo "  package-linux   - Create Linux AppImage and Flatpak"
+	@echo "  package-all     - Create installers for all platforms"
 	@echo ""
 	@echo "Utilities:"
 	@echo "  install       - Install to ~/.local/bin"

@@ -57,8 +57,12 @@ Terminal=false
 EOF
     
     # Copy icon if available
-    if [ -f "resources/icons/icon.png" ]; then
-        cp "resources/icons/icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/whisp.png"
+    if [ -f "assets/icons/icon.png" ]; then
+        cp "assets/icons/icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/whisp.png"
+    elif [ -f "assets/icons/icon-192.png" ]; then
+        cp "assets/icons/icon-192.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/whisp.png"
+    else
+        echo "⚠️  No suitable icon found for AppImage"
     fi
     
     # Create AppRun
@@ -125,7 +129,7 @@ modules:
       - type: file
         path: ../../resources/whisp.desktop
       - type: file
-        path: ../../resources/icons/icon.png
+        path: ../../assets/icons/icon-192.png
         dest-filename: whisp.png
 EOF
     

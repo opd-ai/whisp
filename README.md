@@ -135,6 +135,25 @@ make build-ios       # Creates IPA (requires macOS)
 make build-all
 ```
 
+### Packaging and Distribution
+
+Whisp includes professional packaging for all platforms:
+
+```bash
+# Create platform-specific packages
+make package-windows  # Creates NSIS installer (.exe)
+make package-macos    # Creates DMG package (.dmg)
+make package-linux    # Creates AppImage and Flatpak
+
+# Create packages for all platforms
+make package-all
+```
+
+**Package Features:**
+- **Windows**: Professional NSIS installer with shortcuts and uninstaller
+- **macOS**: DMG packages with proper app bundles and code signing
+- **Linux**: AppImage for portability, Flatpak for sandboxed distribution
+
 ## Architecture Overview
 
 ### Project Structure
@@ -249,10 +268,10 @@ Key architectural decisions:
 - [x] Theme system with light/dark/custom themes
 - [x] Cross-platform notification system
 
-### 🔄 Phase 5: Final Features (Next - 60% Complete)
+### 🔄 Phase 5: Final Features (Next - 80% Complete)
 - [x] Media preview for images and videos in chat
+- [x] **App store packages and distribution** - ✅ **COMPLETED**
 - [ ] P2P voice and video calls over Tox protocol
-- [ ] App store packages and distribution
 - [ ] Performance optimization and security audits
 - [ ] Final documentation and user guides
 

@@ -79,10 +79,27 @@ cat > "$APP_BUNDLE/Contents/Info.plist" << EOF
 EOF
 
 # Copy icon if available
-if [ -f "resources/icons/icon.icns" ]; then
-    cp "resources/icons/icon.icns" "$APP_BUNDLE/Contents/Resources/"
-    echo "    <key>CFBundleIconFile</key>" >> "$APP_BUNDLE/Contents/Info.plist.tmp"
-    echo "    <string>icon</string>" >> "$APP_BUNDLE/Contents/Info.plist.tmp"
+if [ -f "assets/icons/icon.icns" ]; then
+    cp "assets/icons/icon.icns" "$APP_BUNDLE/Contents/Resources/"
+    # Add icon reference to Info.plist
+    sed -i '' 's|</dict>|    <key>CFBundleIconFile</key>\
+    <string>icon</string>\
+</dict>|' "$APP_BUNDLE/Contents/Info.plist"
+    echo "✅ Icon added to app bundle"
+elif [ -f "assets/icons/icon.png" ]; then
+    # Convert PNG to ICNS if sips is available
+    if command -v sips &> /dev/null; then
+        mkdir -p "$APP_BUNDLE/Contents/Resources/"
+        sips -z 512 512 "assets/icons/icon.png" --out "$APP_BUNDLE/Contents/Resources/icon.icns" >/dev/null 2>&1
+        sed -i '' 's|</dict>|    <key>CFBundleIconFile</key>\
+    <string>icon</string>\
+</dict>|' "$APP_BUNDLE/Contents/Info.plist"
+        echo "✅ Icon converted and added to app bundle"
+    else
+        echo "⚠️  sips not available, icon not added"
+    fi
+else
+    echo "⚠️  No icon file found"
 fi
 
 # Sign the application (if developer certificate is available)

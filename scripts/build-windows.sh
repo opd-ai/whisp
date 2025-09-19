@@ -40,8 +40,24 @@ fi
 # Create installer (if on Windows with tools available)
 if [ "$NATIVE" = true ] && command -v makensis &> /dev/null; then
     echo "Creating NSIS installer..."
-    # TODO: Create NSIS script and installer
-    echo "NSIS installer creation would go here"
+    # Copy NSIS script to build directory
+    cp "scripts/whisp.nsi" "build/windows/"
+    cd build/windows
+
+    # Create installer
+    makensis whisp.nsi
+
+    if [ -f "whisp-windows-installer.exe" ]; then
+        echo "✅ NSIS installer created: whisp-windows-installer.exe"
+        mv "whisp-windows-installer.exe" "../whisp-windows-installer-${VERSION}.exe"
+    else
+        echo "⚠️  NSIS installer creation failed"
+    fi
+
+    cd ../..
+else
+    echo "⚠️  NSIS not available, skipping installer creation"
+    echo "   To create installer: Install NSIS and run: makensis scripts/whisp.nsi"
 fi
 
 # Create zip package

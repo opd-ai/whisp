@@ -7,16 +7,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/opd-ai/whisp/platform/common"
 )
 
 // handleFileRecv handles incoming file transfer requests from Tox
 func (m *Manager) handleFileRecv(friendID, fileID, kind uint32, fileSize uint64, fileName string) {
-	log.Printf("Received file transfer request: friend=%d, fileID=%d, size=%d, name=%s",
+	common.SecurePrintf("Received file transfer request: friend=%d, fileID=%d, size=%d, name=%s",
 		friendID, fileID, fileSize, fileName)
 
 	// Validate file size
 	if err := m.validateFileSize(fileSize); err != nil {
-		log.Printf("Rejecting file transfer: %v", err)
+		common.SecurePrintf("Rejecting file transfer: %v", err)
 		return
 	}
 
@@ -48,62 +49,52 @@ func (m *Manager) handleFileRecv(friendID, fileID, kind uint32, fileSize uint64,
 func (m *Manager) handleFileRecvChunk(friendID, fileID uint32, position uint64, data []byte) {
 	// Find the transfer
 	m.mu.RLock()
-	friendTransfers, exists := m.toxTransfers[friendID]
+	transfers, exists := m.toxTransfers[friendID]
+	m.mu.RUnlock()
+
 	if !exists {
-		m.mu.RUnlock()
-		log.Printf("No transfers found for friend %d", friendID)
+		common.SecurePrintf("No transfers found for friend %d", friendID)
 		return
 	}
 
-	transfer, exists := friendTransfers[fileID]
+	transfer, exists := transfers[fileID]
 	if !exists {
-		m.mu.RUnlock()
-		log.Printf("No transfer found for friend %d, fileID %d", friendID, fileID)
+		common.SecurePrintf("No transfer found for friend %d, fileID %d", friendID, fileID)
 		return
 	}
-	m.mu.RUnlock()
 
 	transfer.mu.Lock()
 	defer transfer.mu.Unlock()
 
-	// Check if transfer is active
 	if transfer.State != TransferStateActive {
-		log.Printf("Transfer %s is not active, ignoring chunk", transfer.ID)
+		common.SecurePrintf("Transfer %s is not active, ignoring chunk", transfer.ID)
 		return
 	}
 
-	// Check if file is open for writing
 	if transfer.file == nil {
-		log.Printf("Transfer %s has no open file, ignoring chunk", transfer.ID)
+		common.SecurePrintf("Transfer %s has no open file, ignoring chunk", transfer.ID)
 		return
 	}
 
-	// Seek to position if needed
-	if _, err := transfer.file.Seek(int64(position), io.SeekStart); err != nil {
-		log.Printf("Failed to seek to position %d in transfer %s: %v", position, transfer.ID, err)
-		transfer.State = TransferStateFailed
+	// Seek to the correct position
+	if _, err := transfer.file.Seek(int64(position), 0); err != nil {
+		common.SecurePrintf("Failed to seek to position %d in transfer %s: %v", position, transfer.ID, err)
 		return
 	}
 
-	// Write data
-	bytesWritten, err := transfer.file.Write(data)
-	if err != nil {
-		log.Printf("Failed to write data for transfer %s: %v", transfer.ID, err)
-		transfer.State = TransferStateFailed
+	// Write the data
+	if _, err := transfer.file.Write(data); err != nil {
+		common.SecurePrintf("Failed to write data for transfer %s: %v", transfer.ID, err)
 		return
 	}
 
 	// Update progress
-	transfer.BytesTransferred = position + uint64(bytesWritten)
-
-	// Call progress callback if set
-	if transfer.onProgress != nil {
-		go transfer.onProgress(transfer)
-	}
-
-	// Check if transfer is complete
+	transfer.BytesTransferred += uint64(len(data))
 	if transfer.BytesTransferred >= transfer.FileSize {
-		m.completeTransfer(transfer)
+		transfer.State = TransferStateCompleted
+		transfer.file.Close()
+		transfer.file = nil
+		common.SecurePrintf("Transfer %s completed successfully", transfer.ID)
 	}
 }
 

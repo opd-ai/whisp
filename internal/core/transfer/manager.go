@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -135,16 +136,27 @@ func (m *Manager) AcceptIncomingFile(transferID, saveDir string) error {
 		return fmt.Errorf("transfer %s is not in pending state", transferID)
 	}
 
-	// Prepare file path
-	savePath := filepath.Join(saveDir, transfer.FileName)
+	// Sanitize filename to prevent path traversal attacks
+	cleanFileName := filepath.Base(transfer.FileName)
+	if cleanFileName != transfer.FileName || cleanFileName == "." || cleanFileName == ".." {
+		return fmt.Errorf("invalid filename: contains path traversal sequences")
+	}
 
-	// Ensure directory exists
-	if err := os.MkdirAll(filepath.Dir(savePath), 0o755); err != nil {
+	// Validate filename doesn't contain dangerous characters
+	if strings.ContainsAny(cleanFileName, "<>:\"|?*\x00") {
+		return fmt.Errorf("invalid filename: contains dangerous characters")
+	}
+
+	// Prepare file path with sanitized filename
+	savePath := filepath.Join(saveDir, cleanFileName)
+
+	// Ensure directory exists with restrictive permissions
+	if err := os.MkdirAll(filepath.Dir(savePath), 0o700); err != nil {
 		return fmt.Errorf("failed to create save directory: %w", err)
 	}
 
-	// Create file for writing
-	file, err := os.Create(savePath)
+	// Create file for writing with restrictive permissions
+	file, err := os.OpenFile(savePath, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
 		return fmt.Errorf("failed to create file for writing: %w", err)
 	}

@@ -182,7 +182,7 @@ jobs:
           mkdir -p build/android
           go build -ldflags "-X main.version=1.0.0 -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/android/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/android/Icon.png
-          cd build/android && fyne package -os android -appBuild 1 -appVersion 1.0.0 -appID io.whisp.app -icon Icon.png
+          fyne package --executable build/android/${{ env.APP_NAME }} --os android --app-build 1 --app-version 1.0.0 --app-id io.whisp.app --icon build/android/Icon.png --name ${{ env.APP_NAME }}
 
       - name: Upload Android artifacts
         uses: actions/upload-artifact@v4
@@ -216,7 +216,7 @@ jobs:
           mkdir -p build/ios
           go build -ldflags "-X main.version=1.0.0 -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/ios/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/ios/Icon.png
-          cd build/ios && fyne package -os ios -appBuild 1 -appVersion 1.0.0 -appID io.whisp.app -icon Icon.png
+          fyne package --executable build/ios/${{ env.APP_NAME }} --os ios --app-build 1 --app-version 1.0.0 --app-id io.whisp.app --icon build/ios/Icon.png --name ${{ env.APP_NAME }}
 
       - name: Upload iOS artifacts
         uses: actions/upload-artifact@v4

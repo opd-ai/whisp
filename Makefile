@@ -103,23 +103,23 @@ build-linux:
 # Android build
 build-android:
 	@echo "🤖 Building for Android..."
-	@which fyne > /dev/null || (echo "Installing fyne CLI..." && go install fyne.io/fyne/v2/cmd/fyne@latest)
+	@which fyne > /dev/null || (echo "Installing fyne CLI..." && go install fyne.io/tools/cmd/fyne@latest)
 	@mkdir -p $(BUILD_DIR)/android
 	go build $(LDFLAGS) -o $(BUILD_DIR)/android/$(APP_NAME) ./cmd/whisp
 	cp assets/icons/icon-192.png $(BUILD_DIR)/android/Icon.png
-	cd $(BUILD_DIR)/android && fyne package -os android -appBuild 1 -appVersion $(VERSION) -appID io.whisp.app -icon Icon.png
-	@echo "✅ Android build complete: $(BUILD_DIR)/android/$(APP_NAME).apk"
+	fyne package --executable $(BUILD_DIR)/android/$(APP_NAME) --os android --app-build 1 --app-version $(VERSION) --app-id io.whisp.app --icon $(BUILD_DIR)/android/Icon.png --name $(APP_NAME)
+	@echo "✅ Android build complete: $(APP_NAME).apk"
 
 # iOS build (requires macOS)
 build-ios:
 	@echo "📱 Building for iOS..."
 ifeq ($(GOOS),darwin)
-	@which fyne > /dev/null || (echo "Installing fyne CLI..." && go install fyne.io/fyne/v2/cmd/fyne@latest)
+	@which fyne > /dev/null || (echo "Installing fyne CLI..." && go install fyne.io/tools/cmd/fyne@latest)
 	@mkdir -p $(BUILD_DIR)/ios
 	go build $(LDFLAGS) -o $(BUILD_DIR)/ios/$(APP_NAME) ./cmd/whisp
 	cp assets/icons/icon-192.png $(BUILD_DIR)/ios/Icon.png
-	cd $(BUILD_DIR)/ios && fyne package -os ios -appBuild 1 -appVersion $(VERSION) -appID io.whisp.app -icon Icon.png
-	@echo "✅ iOS build complete: $(BUILD_DIR)/ios/$(APP_NAME).ipa"
+	fyne package --executable $(BUILD_DIR)/ios/$(APP_NAME) --os ios --app-build 1 --app-version $(VERSION) --app-id io.whisp.app --icon $(BUILD_DIR)/ios/Icon.png --name $(APP_NAME)
+	@echo "✅ iOS build complete: $(APP_NAME).ipa"
 else
 	@echo "❌ iOS builds require macOS"
 	@exit 1

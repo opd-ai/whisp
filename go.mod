@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/mutecomm/go-sqlcipher/v4 v4.4.2
 	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-	github.com/opd-ai/toxcore v0.0.0-20250909004412-10e1d939a103
+	github.com/opd-ai/toxcore v0.0.0-20250919224144-1c40768b54f8
 	github.com/zalando/go-keyring v0.2.6
 	golang.org/x/crypto v0.42.0
 	golang.org/x/image v0.11.0
@@ -39,13 +39,16 @@ require (
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
 	github.com/jackmordaunt/icns/v3 v3.0.1 // indirect
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e // indirect
+	github.com/pion/opus v0.0.0-20250915015601-6e2aa18a262f // indirect
+	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/rtp v1.8.22 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/sergeymakinen/go-bmp v1.0.0 // indirect
 	github.com/sergeymakinen/go-ico v1.0.0-beta.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/srwiley/oksvg v0.0.0-20221011165216-be6e8873101c // indirect
 	github.com/srwiley/rasterx v0.0.0-20220730225603-2ab79fcdd4ef // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
 	github.com/tadvi/systray v0.0.0-20190226123456-11a2b8fa57af // indirect
 	github.com/tevino/abool v1.2.0 // indirect
 	github.com/yuin/goldmark v1.5.5 // indirect

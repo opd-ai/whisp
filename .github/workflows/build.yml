@@ -31,7 +31,7 @@ jobs:
           cache: true
 
       - name: Cache dependencies
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -91,7 +91,7 @@ jobs:
           - arch: amd64
             runner: ubuntu-latest
           - arch: arm64
-            runner: ubuntu-latest-arm64
+            runner: ubuntu-22.04-arm
     runs-on: ${{ matrix.runner }}
     needs: test
     timeout-minutes: 30
@@ -240,7 +240,7 @@ jobs:
           cmdline-tools-version: '10406996'
 
       - name: Cache Android NDK
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/android-ndk
           key: android-ndk-r25c

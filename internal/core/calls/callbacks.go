@@ -33,7 +33,7 @@ func (m *Manager) setupCallbacks() {
 }
 
 // onCallReceived handles incoming call events from ToxAV
-func (m *Manager) onCallReceived(friendNumber uint32, audioEnabled bool, videoEnabled bool) {
+func (m *Manager) onCallReceived(friendNumber uint32, audioEnabled, videoEnabled bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -130,8 +130,8 @@ func (m *Manager) onCallStateChanged(friendNumber uint32, state av.CallState) {
 
 // onAudioFrameReceived handles incoming audio frames from ToxAV
 func (m *Manager) onAudioFrameReceived(friendNumber uint32, pcm []int16, sampleCount int,
-	channels uint8, samplingRate uint32) {
-
+	channels uint8, samplingRate uint32,
+) {
 	call, exists := m.GetActiveCall(friendNumber)
 	if !exists {
 		log.Printf("Warning: Received audio frame for unknown call from friend %d", friendNumber)
@@ -173,8 +173,8 @@ func (m *Manager) onAudioFrameReceived(friendNumber uint32, pcm []int16, sampleC
 
 // onVideoFrameReceived handles incoming video frames from ToxAV
 func (m *Manager) onVideoFrameReceived(friendNumber uint32, width, height uint16,
-	y, u, v []byte, yStride, uStride, vStride int) {
-
+	y, u, v []byte, yStride, uStride, vStride int,
+) {
 	call, exists := m.GetActiveCall(friendNumber)
 	if !exists {
 		log.Printf("Warning: Received video frame for unknown call from friend %d", friendNumber)
@@ -224,7 +224,7 @@ func (m *Manager) onVideoFrameReceived(friendNumber uint32, width, height uint16
 }
 
 // onAudioBitrateChanged handles audio bitrate change events from ToxAV
-func (m *Manager) onAudioBitrateChanged(friendNumber uint32, bitrate uint32) {
+func (m *Manager) onAudioBitrateChanged(friendNumber, bitrate uint32) {
 	call, exists := m.GetActiveCall(friendNumber)
 	if !exists {
 		log.Printf("Warning: Audio bitrate changed for unknown call from friend %d", friendNumber)
@@ -243,7 +243,7 @@ func (m *Manager) onAudioBitrateChanged(friendNumber uint32, bitrate uint32) {
 }
 
 // onVideoBitrateChanged handles video bitrate change events from ToxAV
-func (m *Manager) onVideoBitrateChanged(friendNumber uint32, bitrate uint32) {
+func (m *Manager) onVideoBitrateChanged(friendNumber, bitrate uint32) {
 	call, exists := m.GetActiveCall(friendNumber)
 	if !exists {
 		log.Printf("Warning: Video bitrate changed for unknown call from friend %d", friendNumber)

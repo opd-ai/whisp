@@ -522,3 +522,10 @@ func (m *Manager) OnFileChunkRequest(callback func(friendID, fileID uint32, posi
 	defer m.mu.Unlock()
 	m.onFileChunkRequest = callback
 }
+
+// GetInstance returns the underlying Tox instance for advanced usage (e.g., ToxAV)
+func (m *Manager) GetInstance() *toxcore.Tox {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.tox
+}

@@ -80,14 +80,14 @@ func (t CallType) String() string {
 type CallEventType string
 
 const (
-	CallEventIncoming        CallEventType = "incoming"         // Incoming call received
-	CallEventOutgoing        CallEventType = "outgoing"         // Outgoing call initiated
-	CallEventStateChanged    CallEventType = "state_changed"    // Call state changed
-	CallEventEnded           CallEventType = "ended"            // Call ended
-	CallEventError           CallEventType = "error"            // Call error occurred
-	CallEventAudioFrame      CallEventType = "audio_frame"      // Audio frame received
-	CallEventVideoFrame      CallEventType = "video_frame"      // Video frame received
-	CallEventBitrateChanged  CallEventType = "bitrate_changed"  // Bitrate changed
+	CallEventIncoming       CallEventType = "incoming"        // Incoming call received
+	CallEventOutgoing       CallEventType = "outgoing"        // Outgoing call initiated
+	CallEventStateChanged   CallEventType = "state_changed"   // Call state changed
+	CallEventEnded          CallEventType = "ended"           // Call ended
+	CallEventError          CallEventType = "error"           // Call error occurred
+	CallEventAudioFrame     CallEventType = "audio_frame"     // Audio frame received
+	CallEventVideoFrame     CallEventType = "video_frame"     // Video frame received
+	CallEventBitrateChanged CallEventType = "bitrate_changed" // Bitrate changed
 )
 
 // AudioFrame represents an audio frame received during a call
@@ -117,30 +117,30 @@ type VideoFrame struct {
 // Call represents an active or historical voice/video call
 type Call struct {
 	// Call identification
-	ID       string    // Unique call ID
-	FriendID uint32    // Tox friend number
-	Type     CallType  // Audio or video call
-	
+	ID       string   // Unique call ID
+	FriendID uint32   // Tox friend number
+	Type     CallType // Audio or video call
+
 	// Call status
-	State       CallState // Current call state
-	IsOutgoing  bool      // true if we initiated the call
-	StartTime   time.Time // When the call started
-	EndTime     *time.Time // When the call ended (nil if active)
-	
+	State      CallState  // Current call state
+	IsOutgoing bool       // true if we initiated the call
+	StartTime  time.Time  // When the call started
+	EndTime    *time.Time // When the call ended (nil if active)
+
 	// Media settings
 	audioEnabled bool   // Whether audio is enabled
 	videoEnabled bool   // Whether video is enabled
 	audioBitrate uint32 // Current audio bitrate
 	videoBitrate uint32 // Current video bitrate
-	
+
 	// Statistics
 	audioFrameCount uint64 // Number of audio frames processed
 	videoFrameCount uint64 // Number of video frames processed
-	
+
 	// Context for cancellation
 	ctx    context.Context
 	cancel context.CancelFunc
-	
+
 	// Synchronization
 	mu sync.RWMutex
 }
@@ -148,28 +148,28 @@ type Call struct {
 // NewCall creates a new call instance
 func NewCall(friendID uint32, callType CallType, isOutgoing bool) *Call {
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	call := &Call{
 		ID:         uuid.New().String(),
 		FriendID:   friendID,
 		Type:       callType,
 		IsOutgoing: isOutgoing,
 		StartTime:  time.Now(),
-		
-		audioEnabled: true, // Audio enabled by default
+
+		audioEnabled: true,                      // Audio enabled by default
 		videoEnabled: callType == CallTypeVideo, // Video enabled only for video calls
-		
+
 		ctx:    ctx,
 		cancel: cancel,
 	}
-	
+
 	// Set initial state based on direction
 	if isOutgoing {
 		call.State = CallStateOutgoing
 	} else {
 		call.State = CallStateIncoming
 	}
-	
+
 	return call
 }
 
@@ -184,9 +184,9 @@ func (c *Call) GetState() CallState {
 func (c *Call) SetState(state CallState) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.State = state
-	
+
 	// Set end time when call ends
 	if state == CallStateEnded {
 		now := time.Now()
@@ -271,11 +271,11 @@ func (c *Call) ToggleVideo() bool {
 func (c *Call) Duration() time.Duration {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	if c.EndTime != nil {
 		return c.EndTime.Sub(c.StartTime)
 	}
-	
+
 	// Call is still active
 	return time.Since(c.StartTime)
 }
@@ -291,14 +291,14 @@ func (c *Call) Context() context.Context {
 func (c *Call) String() string {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	direction := "incoming"
 	if c.IsOutgoing {
 		direction = "outgoing"
 	}
-	
+
 	duration := c.Duration()
-	
+
 	return fmt.Sprintf("Call{ID:%s, Friend:%d, Type:%s, State:%s, Direction:%s, Duration:%v}",
 		c.ID, c.FriendID, c.Type, c.State, direction, duration)
 }

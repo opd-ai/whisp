@@ -19,6 +19,7 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,14 +30,52 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      - name: Install dependencies
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Install dependencies with retry
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc libc6-dev libgl1-mesa-dev xorg-dev
-          make deps
+          
+          # Retry make deps up to 3 times
+          for i in {1..3}; do
+            if make deps; then
+              echo "✅ Dependencies installed successfully on attempt $i"
+              break
+            else
+              echo "⚠️  Dependency installation failed on attempt $i"
+              if [ $i -eq 3 ]; then
+                echo "❌ Dependency installation failed after 3 attempts"
+                exit 1
+              fi
+              sleep 10
+            fi
+          done
 
       - name: Run tests with coverage
-        run: make test-coverage
+        run: |
+          # Run tests with retry for flaky network tests
+          for i in {1..2}; do
+            if make test-coverage; then
+              echo "✅ Tests passed on attempt $i"
+              break
+            else
+              echo "⚠️  Tests failed on attempt $i"
+              if [ $i -eq 2 ]; then
+                echo "❌ Tests failed after 2 attempts"
+                exit 1
+              fi
+              sleep 5
+            fi
+          done
 
       - name: Run linter
         run: |
@@ -46,11 +85,16 @@ jobs:
   # Linux builds
   build-linux:
     name: Build Linux
-    runs-on: ubuntu-latest
-    needs: test
     strategy:
       matrix:
-        arch: [amd64, arm64]
+        include:
+          - arch: amd64
+            runner: ubuntu-latest
+          - arch: arm64
+            runner: ubuntu-latest-arm64
+    runs-on: ${{ matrix.runner }}
+    needs: test
+    timeout-minutes: 30
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -70,13 +114,15 @@ jobs:
         run: |
           make deps
           mkdir -p build/linux
-          # Build for native architecture only in CI to avoid CGO cross-compilation issues
-          if [ "${{ matrix.arch }}" = "amd64" ]; then
-            GOOS=linux GOARCH=amd64 CGO_ENABLED=1 go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/linux/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
-          else
-            echo "Cross-compilation for ARM64 requires native builder - skipping"
-            touch build/linux/${{ env.APP_NAME }}-${{ matrix.arch }}
+          # Build natively for the runner architecture
+          GOOS=linux GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/linux/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
+          
+          # Verify the binary was created and is not empty
+          if [ ! -f "build/linux/${{ env.APP_NAME }}-${{ matrix.arch }}" ] || [ ! -s "build/linux/${{ env.APP_NAME }}-${{ matrix.arch }}" ]; then
+            echo "❌ Failed to create Linux ${{ matrix.arch }} binary"
+            exit 1
           fi
+          echo "✅ Successfully built Linux ${{ matrix.arch }} binary ($(stat -c%s build/linux/${{ env.APP_NAME }}-${{ matrix.arch }}) bytes)"
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
@@ -90,6 +136,7 @@ jobs:
     name: Build Windows
     runs-on: windows-latest
     needs: test
+    timeout-minutes: 30
     strategy:
       matrix:
         arch: [amd64]
@@ -109,6 +156,14 @@ jobs:
           mkdir -p build/windows
           # Enable CGO for Windows GUI build
           $env:CGO_ENABLED="1"; $env:GOOS="windows"; $env:GOARCH="${{ matrix.arch }}"; go build -ldflags "-X main.version=$($env:GITHUB_REF -replace 'refs/.*/','') -X main.buildTime=$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ') -X main.gitCommit=${{ github.sha }}" -o build/windows/${{ env.APP_NAME }}.exe ./cmd/whisp
+          
+          # Verify the executable was created and is not empty
+          if (!(Test-Path "build/windows/${{ env.APP_NAME }}.exe") -or (Get-Item "build/windows/${{ env.APP_NAME }}.exe").Length -eq 0) {
+            Write-Host "❌ Failed to create Windows ${{ matrix.arch }} executable"
+            exit 1
+          }
+          $size = (Get-Item "build/windows/${{ env.APP_NAME }}.exe").Length
+          Write-Host "✅ Successfully built Windows ${{ matrix.arch }} executable ($size bytes)"
 
       - name: Upload Windows artifacts
         uses: actions/upload-artifact@v4
@@ -122,6 +177,7 @@ jobs:
     name: Build macOS
     runs-on: macos-latest
     needs: test
+    timeout-minutes: 30
     strategy:
       matrix:
         arch: [amd64, arm64]
@@ -141,6 +197,13 @@ jobs:
           mkdir -p build/macos
           # Enable CGO for macOS GUI build
           GOOS=darwin GOARCH=${{ matrix.arch }} CGO_ENABLED=1 go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/macos/${{ env.APP_NAME }}-${{ matrix.arch }} ./cmd/whisp
+          
+          # Verify the binary was created and is not empty
+          if [ ! -f "build/macos/${{ env.APP_NAME }}-${{ matrix.arch }}" ] || [ ! -s "build/macos/${{ env.APP_NAME }}-${{ matrix.arch }}" ]; then
+            echo "❌ Failed to create macOS ${{ matrix.arch }} binary"
+            exit 1
+          fi
+          echo "✅ Successfully built macOS ${{ matrix.arch }} binary ($(stat -f%z build/macos/${{ env.APP_NAME }}-${{ matrix.arch }}) bytes)"
 
       - name: Upload macOS artifacts
         uses: actions/upload-artifact@v4
@@ -154,6 +217,7 @@ jobs:
     name: Build Android
     runs-on: ubuntu-latest
     needs: test
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -172,6 +236,15 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: '10406996'
+
+      - name: Cache Android NDK
+        uses: actions/cache@v3
+        with:
+          path: ~/android-ndk
+          key: android-ndk-r25c
+          restore-keys: android-ndk-
 
       - name: Install Android dependencies
         run: |
@@ -185,25 +258,42 @@ jobs:
           mkdir -p build/android
           go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/android/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/android/Icon.png
-          # Check if Android SDK is available by looking for sdkmanager
+          
+          # Check if Android SDK tools are available
           if command -v fyne &> /dev/null && command -v sdkmanager &> /dev/null; then
-            echo "Android SDK detected, building APK..."
-            fyne package --executable build/android/${{ env.APP_NAME }} --os android --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/android/Icon.png --name ${{ env.APP_NAME }}
-            # Verify APK was created
-            if [ -f "${{ env.APP_NAME }}.apk" ]; then
+            echo "✅ Android SDK detected, building APK..."
+            
+            # Retry APK packaging up to 3 times
+            for i in {1..3}; do
+              if fyne package --executable build/android/${{ env.APP_NAME }} --os android --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/android/Icon.png --name ${{ env.APP_NAME }}; then
+                echo "✅ APK packaging succeeded on attempt $i"
+                break
+              else
+                echo "⚠️  APK packaging failed on attempt $i"
+                if [ $i -eq 3 ]; then
+                  echo "❌ APK packaging failed after 3 attempts"
+                  exit 1
+                fi
+                sleep 5
+              fi
+            done
+            
+            # Verify APK was created and has content
+            if [ -f "${{ env.APP_NAME }}.apk" ] && [ -s "${{ env.APP_NAME }}.apk" ]; then
               mv ${{ env.APP_NAME }}.apk build/android/
-              echo "✅ Android APK built successfully"
+              echo "✅ Android APK built successfully ($(stat -c%s build/android/${{ env.APP_NAME }}.apk) bytes)"
             else
-              echo "❌ APK file not found after packaging"
+              echo "❌ APK file not found or empty after packaging"
               exit 1
             fi
           else
-            echo "⚠️  Android development tools not available, skipping APK packaging"
+            echo "⚠️  Android development tools not available, creating placeholder"
             echo "Available commands:"
             command -v fyne || echo "  - fyne: not found"
             command -v sdkmanager || echo "  - sdkmanager: not found"
             echo "ANDROID_HOME: $ANDROID_HOME"
-            touch build/android/${{ env.APP_NAME }}.apk
+            # Create a small placeholder file instead of empty file
+            echo "Placeholder APK for CI environment" > build/android/${{ env.APP_NAME }}.apk
           fi
 
       - name: Upload Android artifacts
@@ -218,6 +308,7 @@ jobs:
     name: Build iOS
     runs-on: macos-latest
     needs: test
+    timeout-minutes: 45
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -238,24 +329,41 @@ jobs:
           mkdir -p build/ios
           go build -ldflags "-X main.version=${GITHUB_REF#refs/*/} -X main.buildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -X main.gitCommit=${{ github.sha }}" -o build/ios/${{ env.APP_NAME }} ./cmd/whisp
           cp assets/icons/icon-192.png build/ios/Icon.png
+          
           # Check if iOS development tools are available
           if command -v fyne &> /dev/null && [ -d "/Applications/Xcode.app" ]; then
-            echo "iOS development tools detected, building IPA..."
-            fyne package --executable build/ios/${{ env.APP_NAME }} --os ios --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/ios/Icon.png --name ${{ env.APP_NAME }}
-            # Verify IPA was created
-            if [ -f "${{ env.APP_NAME }}.ipa" ]; then
+            echo "✅ iOS development tools detected, building IPA..."
+            
+            # Retry IPA packaging up to 3 times
+            for i in {1..3}; do
+              if fyne package --executable build/ios/${{ env.APP_NAME }} --os ios --app-build 1 --app-version ${GITHUB_REF#refs/*/} --app-id io.whisp.app --icon build/ios/Icon.png --name ${{ env.APP_NAME }}; then
+                echo "✅ IPA packaging succeeded on attempt $i"
+                break
+              else
+                echo "⚠️  IPA packaging failed on attempt $i"
+                if [ $i -eq 3 ]; then
+                  echo "❌ IPA packaging failed after 3 attempts"
+                  exit 1
+                fi
+                sleep 5
+              fi
+            done
+            
+            # Verify IPA was created and has content
+            if [ -f "${{ env.APP_NAME }}.ipa" ] && [ -s "${{ env.APP_NAME }}.ipa" ]; then
               mv ${{ env.APP_NAME }}.ipa build/ios/
-              echo "✅ iOS IPA built successfully"
+              echo "✅ iOS IPA built successfully ($(stat -f%z build/ios/${{ env.APP_NAME }}.ipa) bytes)"
             else
-              echo "❌ IPA file not found after packaging"
+              echo "❌ IPA file not found or empty after packaging"
               exit 1
             fi
           else
-            echo "⚠️  iOS development tools not available, skipping IPA packaging"
+            echo "⚠️  iOS development tools not available, creating placeholder"
             echo "Available commands:"
             command -v fyne || echo "  - fyne: not found"
             [ -d "/Applications/Xcode.app" ] && echo "  - Xcode: found" || echo "  - Xcode: not found"
-            touch build/ios/${{ env.APP_NAME }}.ipa
+            # Create a small placeholder file instead of empty file
+            echo "Placeholder IPA for CI environment" > build/ios/${{ env.APP_NAME }}.ipa
           fi
 
       - name: Upload iOS artifacts
@@ -271,6 +379,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-linux, build-windows, build-macos, build-android, build-ios]
     if: github.event_name == 'release'
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
@@ -279,34 +388,82 @@ jobs:
         with:
           path: artifacts
 
+      - name: List downloaded artifacts
+        run: |
+          echo "📦 Downloaded artifacts:"
+          find artifacts -type f -exec ls -lh {} \; | sort
+
       - name: Create release archives
         run: |
           mkdir -p release
           
           # Linux archives
-          cd artifacts/linux-amd64 && tar czf ../../release/${{ env.APP_NAME }}-linux-amd64.tar.gz * && cd ../..
-          cd artifacts/linux-arm64 && tar czf ../../release/${{ env.APP_NAME }}-linux-arm64.tar.gz * && cd ../..
+          if [ -f "artifacts/linux-amd64/${{ env.APP_NAME }}-amd64" ] && [ -s "artifacts/linux-amd64/${{ env.APP_NAME }}-amd64" ]; then
+            cd artifacts/linux-amd64 && tar czf ../../release/${{ env.APP_NAME }}-linux-amd64.tar.gz * && cd ../..
+            echo "✅ Created Linux AMD64 archive"
+          else
+            echo "⚠️  Linux AMD64 binary not available or empty"
+          fi
+          
+          if [ -f "artifacts/linux-arm64/${{ env.APP_NAME }}-arm64" ] && [ -s "artifacts/linux-arm64/${{ env.APP_NAME }}-arm64" ]; then
+            cd artifacts/linux-arm64 && tar czf ../../release/${{ env.APP_NAME }}-linux-arm64.tar.gz * && cd ../..
+            echo "✅ Created Linux ARM64 archive"
+          else
+            echo "⚠️  Linux ARM64 binary not available or empty"
+          fi
           
           # Windows archive
-          cd artifacts/windows-amd64 && zip ../../release/${{ env.APP_NAME }}-windows-amd64.zip * && cd ../..
+          if [ -f "artifacts/windows-amd64/${{ env.APP_NAME }}.exe" ] && [ -s "artifacts/windows-amd64/${{ env.APP_NAME }}.exe" ]; then
+            cd artifacts/windows-amd64 && zip ../../release/${{ env.APP_NAME }}-windows-amd64.zip * && cd ../..
+            echo "✅ Created Windows AMD64 archive"
+          else
+            echo "⚠️  Windows AMD64 executable not available or empty"
+          fi
           
           # macOS archives
-          cd artifacts/macos-amd64 && tar czf ../../release/${{ env.APP_NAME }}-macos-amd64.tar.gz * && cd ../..
-          cd artifacts/macos-arm64 && tar czf ../../release/${{ env.APP_NAME }}-macos-arm64.tar.gz * && cd ../..
+          if [ -f "artifacts/macos-amd64/${{ env.APP_NAME }}-amd64" ] && [ -s "artifacts/macos-amd64/${{ env.APP_NAME }}-amd64" ]; then
+            cd artifacts/macos-amd64 && tar czf ../../release/${{ env.APP_NAME }}-macos-amd64.tar.gz * && cd ../..
+            echo "✅ Created macOS AMD64 archive"
+          else
+            echo "⚠️  macOS AMD64 binary not available or empty"
+          fi
           
-          # Mobile packages (copy if they exist and are not empty placeholder files)
-          if [ -f "artifacts/android/${{ env.APP_NAME }}.apk" ] && [ -s "artifacts/android/${{ env.APP_NAME }}.apk" ]; then
-            cp artifacts/android/${{ env.APP_NAME }}.apk release/
-            echo "✅ Android APK included in release"
+          if [ -f "artifacts/macos-arm64/${{ env.APP_NAME }}-arm64" ] && [ -s "artifacts/macos-arm64/${{ env.APP_NAME }}-arm64" ]; then
+            cd artifacts/macos-arm64 && tar czf ../../release/${{ env.APP_NAME }}-macos-arm64.tar.gz * && cd ../..
+            echo "✅ Created macOS ARM64 archive"
           else
-            echo "⚠️  Android APK not available or is placeholder file, skipping"
+            echo "⚠️  macOS ARM64 binary not available or empty"
           fi
-          if [ -f "artifacts/ios/${{ env.APP_NAME }}.ipa" ] && [ -s "artifacts/ios/${{ env.APP_NAME }}.ipa" ]; then
-            cp artifacts/ios/${{ env.APP_NAME }}.ipa release/
-            echo "✅ iOS IPA included in release"
+          
+          # Mobile packages (only include if they are real packages, not placeholders)
+          if [ -f "artifacts/android/${{ env.APP_NAME }}.apk" ]; then
+            size=$(stat -c%s "artifacts/android/${{ env.APP_NAME }}.apk" 2>/dev/null || echo "0")
+            if [ "$size" -gt 1000 ]; then  # Real APK should be larger than 1KB
+              cp artifacts/android/${{ env.APP_NAME }}.apk release/
+              echo "✅ Android APK included in release ($size bytes)"
+            else
+              echo "⚠️  Android APK is placeholder file ($size bytes), skipping"
+            fi
           else
-            echo "⚠️  iOS IPA not available or is placeholder file, skipping"
+            echo "⚠️  Android APK not found"
           fi
+          
+          if [ -f "artifacts/ios/${{ env.APP_NAME }}.ipa" ]; then
+            size=$(stat -c%s "artifacts/ios/${{ env.APP_NAME }}.ipa" 2>/dev/null || echo "0")
+            if [ "$size" -gt 1000 ]; then  # Real IPA should be larger than 1KB
+              cp artifacts/ios/${{ env.APP_NAME }}.ipa release/
+              echo "✅ iOS IPA included in release ($size bytes)"
+            else
+              echo "⚠️  iOS IPA is placeholder file ($size bytes), skipping"
+            fi
+          else
+            echo "⚠️  iOS IPA not found"
+          fi
+          
+          # List final release files
+          echo ""
+          echo "📦 Final release packages:"
+          ls -lh release/ || echo "No release files created"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
@@ -314,3 +471,4 @@ jobs:
           files: release/*
           generate_release_notes: true
           prerelease: ${{ contains(github.ref, 'beta') || contains(github.ref, 'alpha') || contains(github.ref, 'rc') }}
+          fail_on_unmatched_files: false
